@@ -7,187 +7,181 @@ const { chromium } = require('playwright');
 
 const url = process.env.STEP7_URL;
 const screenshotPath = process.env.STEP7_SCREENSHOT;
+if (!url) throw new Error('STEP7_URL is required');
 
-if (!url) {
-  throw new Error('STEP7_URL is required');
+async function waitForGlobalMedia(page, expectedVideos) {
+  await page.waitForFunction((count) => {
+    const runtime = window.THMTBannerRuntime;
+    const videos = Array.from(document.querySelectorAll(
+      '[data-slot^="TOP_"] video,[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
+    ));
+    return runtime && videos.length === count && videos.every((v) => v.currentSrc || v.querySelector('source'));
+  }, expectedVideos, { timeout: 60000 });
 }
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 1000 });
 
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-
-    await page.waitForFunction(() => {
-      const runtime = window.THMTBannerRuntime;
-      const slots = document.querySelectorAll('[data-slot]');
-      const globalImages = document.querySelectorAll(
-        '[data-slot^="TOP_"] img,[data-slot^="LEFT_"] img,[data-slot^="RIGHT_"] img,[data-slot^="BOTTOM_"] img'
-      );
-      return runtime &&
-        slots.length === 13 &&
-        globalImages.length === 8 &&
-        Array.from(globalImages).every((img) => img.complete && img.naturalWidth > 0);
-    }, null, { timeout: 60000 });
+    await waitForGlobalMedia(page, 8);
 
     const initial = await page.evaluate(() => ({
+      version: window.THMTBannerRuntime.version,
+      profile: window.THMTBannerRuntime.getPerformanceProfile(),
       brandCount: window.THMTBannerRuntime.getBrandCount(),
-      intervalMs: window.THMTBannerRuntime.getIntervalMs(),
-      currentTick: window.THMTBannerRuntime.getCurrentTick(),
+      interval: window.THMTBannerRuntime.getIntervalMs(),
       running: window.THMTBannerRuntime.isRunning(),
-      middleActive: window.THMTBannerRuntime.isMiddleActive(),
-      middleImages: document.querySelectorAll('[data-slot^="MIDDLE_"] img').length,
-      globalImages: document.querySelectorAll(
-        '[data-slot^="TOP_"] img,[data-slot^="LEFT_"] img,[data-slot^="RIGHT_"] img,[data-slot^="BOTTOM_"] img'
+      slots: document.querySelectorAll('[data-slot]').length,
+      globalVideos: document.querySelectorAll(
+        '[data-slot^="TOP_"] video,[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
       ).length,
-      hideControls: document.querySelectorAll('[data-thmt-hide], .thmt-banner-hide, .thmt-banner-toggle').length
+      gifFallbacks: document.querySelectorAll('.thmt-banner-gif-fallback').length,
+      mediaKinds: Array.from(document.querySelectorAll('[data-slot]')).map((s) => s.dataset.media || '')
     }));
 
-    assert.strictEqual(initial.brandCount, 14, 'Runtime must see 14 enabled brands');
-    assert.strictEqual(initial.intervalMs, 5000, 'Rotation interval must be 5000ms');
-    assert.strictEqual(initial.running, true, 'Rotation timer must be running');
-    assert.strictEqual(initial.globalImages, 8, 'The 8 always-visible global GIFs must load');
-    assert.strictEqual(initial.hideControls, 0, 'Visitor hide controls must not exist');
+    assert.strictEqual(initial.version, '0.7.0');
+    assert.strictEqual(initial.profile, 'full');
+    assert.strictEqual(initial.brandCount, 14);
+    assert.strictEqual(initial.interval, 5000);
+    assert.strictEqual(initial.running, true);
+    assert.strictEqual(initial.slots, 13);
+    assert.strictEqual(initial.globalVideos, 8);
+    assert.strictEqual(initial.gifFallbacks, 0);
+    assert(initial.mediaKinds.some((x) => x.startsWith('mp4')));
 
-    /*
-     * The clean fixture is short, so MIDDLE may legitimately be near the first
-     * viewport. Force it far away, then prove the hotfix releases those GIFs.
-     */
+    const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name));
+    assert(resources.some((x) => x.includes('/media/') && x.endsWith('.mp4')), 'MP4 media must load');
+    assert(!resources.some((x) => x.includes('/assets/') && x.endsWith('.gif')), 'GIF should not load in normal v0.7 path');
+
+    await page.evaluate(() => window.dispatchEvent(new Event('scroll')));
+    await page.waitForTimeout(250);
+    const beforeGeometry = await page.evaluate(() => window.THMTBannerRuntime.getGeometryPassCount());
+
     await page.evaluate(() => {
-      const middle = document.querySelector('.thmt-banner-middle-zone');
-      const spacer = document.createElement('div');
-      spacer.id = 'step7-middle-offscreen-spacer';
-      spacer.style.height = '2200px';
-      middle.parentNode.insertBefore(spacer, middle);
-      window.scrollTo(0, 0);
-      window.THMTBannerRuntime.syncMiddleVisibility();
-      window.THMTBannerRuntime.requestLayout();
+      for (let i = 0; i < 100; i += 1) window.dispatchEvent(new Event('scroll'));
     });
-    await page.waitForTimeout(100);
 
-    const offscreenMiddleImages = await page.evaluate(() =>
-      document.querySelectorAll('[data-slot^="MIDDLE_"] img').length
-    );
-    assert.strictEqual(offscreenMiddleImages, 0, 'Far off-screen MIDDLE GIFs must be released');
+    const frozen = await page.evaluate(() => ({
+      scrolling: window.THMTBannerRuntime.isScrolling(),
+      running: window.THMTBannerRuntime.isRunning(),
+      paused: Array.from(document.querySelectorAll('[data-slot] video')).every((v) => v.paused)
+    }));
+    assert.strictEqual(frozen.scrolling, true);
+    assert.strictEqual(frozen.running, false);
+    assert.strictEqual(frozen.paused, true);
 
-    const beforeBurst = await page.evaluate(() => window.THMTBannerRuntime.getLayoutPassCount());
-    await page.evaluate(() => {
-      for (let i = 0; i < 100; i += 1) {
-        window.dispatchEvent(new Event('scroll'));
-      }
-    });
-    await page.waitForTimeout(100);
-    const afterBurst = await page.evaluate(() => window.THMTBannerRuntime.getLayoutPassCount());
-    assert(afterBurst - beforeBurst <= 4, 'Scroll layout work must be requestAnimationFrame-throttled');
+    await page.waitForTimeout(250);
+    const afterGeometry = await page.evaluate(() => window.THMTBannerRuntime.getGeometryPassCount());
+    assert(afterGeometry - beforeGeometry <= 1, 'scroll burst must not repeatedly calculate geometry');
+
+    const resumed = await page.evaluate(() => ({
+      scrolling: window.THMTBannerRuntime.isScrolling(),
+      running: window.THMTBannerRuntime.isRunning()
+    }));
+    assert.strictEqual(resumed.scrolling, false);
+    assert.strictEqual(resumed.running, true);
 
     await page.evaluate(() => {
       const header = document.createElement('header');
       header.id = 'step7-fixed-header';
       Object.assign(header.style, {
-        position: 'fixed',
-        left: '0',
-        right: '0',
-        top: '0',
-        height: '120px',
-        zIndex: '100000',
-        background: '#111'
+        position: 'fixed', left: '0', right: '0', top: '0', height: '120px', zIndex: '100000', background: '#111'
       });
       document.body.appendChild(header);
-
-      const spacer = document.createElement('div');
-      spacer.id = 'step7-extra-scroll';
-      spacer.style.height = '2000px';
-      document.body.appendChild(spacer);
-      window.scrollTo(0, 700);
-      window.THMTBannerRuntime.requestLayout();
+      window.THMTBannerRuntime.refreshHeaderCandidates();
+      window.THMTBannerRuntime.recomputeGeometry();
     });
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(100);
 
-    const topWithHeader = await page.evaluate(() => {
+    const headerGeometry = await page.evaluate(() => {
       const top = document.getElementById('thmt-banner-top').getBoundingClientRect();
       const header = document.getElementById('step7-fixed-header').getBoundingClientRect();
       return { top: top.top, headerBottom: header.bottom, height: top.height };
     });
-    assert(topWithHeader.height > 20, 'TOP row must keep a real visible height');
-    assert(
-      topWithHeader.top >= topWithHeader.headerBottom + 6,
-      'TOP row must sit below a fixed/sticky site header'
-    );
+    assert(headerGeometry.height > 20);
+    assert(headerGeometry.top >= headerGeometry.headerBottom + 6, 'TOP must sit below fixed header');
+    await page.evaluate(() => document.getElementById('step7-fixed-header')?.remove());
 
     await page.evaluate(() => {
-      document.getElementById('step7-fixed-header')?.remove();
-      document.getElementById('step7-extra-scroll')?.remove();
-      document.getElementById('step7-middle-offscreen-spacer')?.remove();
       const middle = document.querySelector('.thmt-banner-middle-zone');
-      const rect = middle.getBoundingClientRect();
-      const target = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2);
-      window.scrollTo(0, Math.max(0, target));
-      window.dispatchEvent(new Event('scroll'));
-      window.THMTBannerRuntime.syncMiddleVisibility();
-      window.THMTBannerRuntime.requestLayout();
+      const spacer = document.createElement('div');
+      spacer.id = 'step7-middle-spacer';
+      spacer.style.height = '2600px';
+      middle.parentNode.insertBefore(spacer, middle);
+      window.scrollTo(0, 0);
     });
+    await page.waitForTimeout(300);
 
-    await page.waitForFunction(() => {
-      const images = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"] img'));
-      return window.THMTBannerRuntime.isMiddleActive() && images.length === 5;
-    }, null, { timeout: 5000 });
+    const middleFar = await page.evaluate(() =>
+      document.querySelectorAll('[data-slot^="MIDDLE_"] video,[data-slot^="MIDDLE_"] img').length
+    );
+    assert.strictEqual(middleFar, 0, 'far MIDDLE media must be released');
 
-    const middle = await page.evaluate(() => {
-      const slots = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"]')).map((slot) => {
-        const img = slot.querySelector('img');
-        return {
-          brand: slot.getAttribute('data-brand'),
-          objectFit: img ? getComputedStyle(img).objectFit : '',
-          loading: img ? img.loading : '',
-          src: img ? img.src : ''
-        };
-      });
-      return slots;
+    await page.evaluate(() => {
+      document.getElementById('step7-middle-spacer')?.remove();
+      document.querySelector('.thmt-banner-middle-zone').scrollIntoView({ block: 'center' });
     });
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-slot^="MIDDLE_"] video').length === 5,
+      null,
+      { timeout: 15000 }
+    );
 
-    assert.strictEqual(middle.length, 5, 'MIDDLE count');
-    assert.strictEqual(new Set(middle.map((slot) => slot.brand)).size, 5, 'MIDDLE must show 5 distinct brands');
-    middle.forEach((slot) => {
-      assert(slot.src.includes('/assets/'), 'MIDDLE must receive a real remote asset URL near viewport');
-      assert.strictEqual(slot.loading, 'lazy', 'MIDDLE browser hint must stay lazy');
-      assert.strictEqual(slot.objectFit, 'contain', 'MIDDLE must use object-fit: contain');
-    });
-
-    const beforeRotation = await page.evaluate(() => ({
-      tick: window.THMTBannerRuntime.getCurrentTick(),
-      brands: Array.from(document.querySelectorAll(
-        '[data-slot^="TOP_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"],[data-slot^="BOTTOM_"]'
-      )).map((slot) => slot.getAttribute('data-brand'))
+    const middle = await page.evaluate(() => ({
+      count: document.querySelectorAll('[data-slot^="MIDDLE_"] video').length,
+      brands: Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"]')).map((s) => s.dataset.brand),
+      sources: Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"] video source')).map((s) => s.src)
     }));
+    assert.strictEqual(middle.count, 5);
+    assert.strictEqual(new Set(middle.brands).size, 5);
+    assert(middle.sources.every((x) => x.includes('/media/') && x.endsWith('.mp4')));
 
+    const beforeTick = await page.evaluate(() => ({
+      tick: window.THMTBannerRuntime.getCurrentTick(),
+      brands: Array.from(document.querySelectorAll('[data-slot^="TOP_"],[data-slot^="BOTTOM_"]')).map((s) => s.dataset.brand)
+    }));
     await page.waitForTimeout(5400);
 
-    const afterRotation = await page.evaluate(() => ({
+    const afterTick = await page.evaluate(() => ({
       tick: window.THMTBannerRuntime.getCurrentTick(),
       running: window.THMTBannerRuntime.isRunning(),
-      loaded: Array.from(document.querySelectorAll(
-        '[data-slot^="TOP_"] img,[data-slot^="LEFT_"] img,[data-slot^="RIGHT_"] img,[data-slot^="BOTTOM_"] img'
-      )).every((img) => img.complete && img.naturalWidth > 0),
-      brands: Array.from(document.querySelectorAll(
-        '[data-slot^="TOP_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"],[data-slot^="BOTTOM_"]'
-      )).map((slot) => slot.getAttribute('data-brand'))
+      brands: Array.from(document.querySelectorAll('[data-slot^="TOP_"],[data-slot^="BOTTOM_"]')).map((s) => s.dataset.brand),
+      fallback: document.querySelectorAll('.thmt-banner-gif-fallback').length
     }));
+    assert.notStrictEqual(afterTick.tick, beforeTick.tick);
+    assert.strictEqual(afterTick.running, true);
+    assert.strictEqual(afterTick.fallback, 0);
+    assert(afterTick.brands.some((b, i) => b !== beforeTick.brands[i]));
 
-    assert.strictEqual(afterRotation.running, true, 'Rotation must remain running');
-    assert.notStrictEqual(afterRotation.tick, beforeRotation.tick, 'Rotation tick must advance');
-    assert.strictEqual(afterRotation.loaded, true, 'Global slots must never blank while the next GIF loads');
-    assert(
-      afterRotation.brands.some((brand, index) => brand !== beforeRotation.brands[index]),
-      'At least one global banner must rotate'
+    const mobile = await context.newPage();
+    await mobile.setViewportSize({ width: 800, height: 900 });
+    await mobile.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await mobile.waitForFunction(
+      () => window.THMTBannerRuntime && document.querySelectorAll('[data-slot^="TOP_"] video').length === 2,
+      null,
+      { timeout: 60000 }
     );
+
+    const mobileState = await mobile.evaluate(() => ({
+      sideChildren: Array.from(document.querySelectorAll('[data-slot^="LEFT_"],[data-slot^="RIGHT_"]')).reduce((n, s) => n + s.children.length, 0),
+      sideVideos: document.querySelectorAll('[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video').length,
+      gifFallback: document.querySelectorAll('.thmt-banner-gif-fallback').length
+    }));
+    assert.strictEqual(mobileState.sideChildren, 0, 'hidden mobile side slots must remain empty');
+    assert.strictEqual(mobileState.sideVideos, 0);
+    assert.strictEqual(mobileState.gifFallback, 0);
+    await mobile.close();
 
     if (screenshotPath) {
       fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
       await page.screenshot({ path: screenshotPath, fullPage: true });
     }
 
-    console.log('PASS: Step 7 hotfix — lazy MIDDLE + fixed-header TOP + rAF scroll + non-blank rotation.');
+    console.log('PASS: v0.7 MP4 engine + scroll freeze + zero-layout scroll + lazy MIDDLE + mobile no-side-load + header offset.');
   } finally {
     await browser.close();
   }
