@@ -3,7 +3,7 @@ name: Step 7 WordPress acceptance
 on:
   push:
     branches:
-      - step7-performance-engine-v070
+      - step7-no-top-v071
     paths:
       - "plugin/**"
       - "config/**"
@@ -51,12 +51,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Build Step 7 v0.7 candidate ZIP
+      - name: Build Step 7 v0.7.1 no-TOP candidate ZIP
         run: |
           mkdir -p dist
           cd plugin
-          zip -qr "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-performance-v0.7.0.zip" thmt-banner-system
-          unzip -l "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-performance-v0.7.0.zip" | head -n 40
+          zip -qr "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-no-top-v0.7.1.zip" thmt-banner-system
+          unzip -l "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-no-top-v0.7.1.zip" | head -n 40
 
       - name: Install WP-CLI
         run: |
@@ -196,7 +196,7 @@ jobs:
       - name: Browser performance acceptance
         env:
           STEP7_URL: http://127.0.0.1:8080/?p=${{ steps.fixture.outputs.post_id }}
-          STEP7_SCREENSHOT: ${{ github.workspace }}/dist/step7-performance-v070.png
+          STEP7_SCREENSHOT: ${{ github.workspace }}/dist/step7-no-top-v071.png
         run: node scripts/step7_browser_test.cjs
 
       - name: Show diagnostics on failure
@@ -207,12 +207,12 @@ jobs:
           echo "===== Page excerpt ====="
           sed -n '1,200p' /tmp/step7-page.html || true
 
-      - name: Upload v0.7 candidate + screenshot
+      - name: Upload v0.7.1 no-TOP candidate + screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: thmt-banner-step7-performance-v070
+          name: thmt-banner-step7-no-top-v071
           path: |
-            dist/thmt-banner-system-step7-performance-v0.7.0.zip
-            dist/step7-performance-v070.png
+            dist/thmt-banner-system-step7-no-top-v0.7.1.zip
+            dist/step7-no-top-v071.png
           if-no-files-found: error
           retention-days: 14
