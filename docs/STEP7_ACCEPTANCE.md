@@ -4,25 +4,25 @@ Step 7 has two gates. Do not create Stable V1 until both pass.
 
 ## Gate A — automated clean WordPress
 
-The v0.7 acceptance workflow installs a clean WordPress + MariaDB instance, activates the candidate plugin and verifies:
+The v0.7.1 acceptance workflow installs a clean WordPress + MariaDB instance, activates the candidate plugin and verifies:
 
 - plugin activation;
 - frontend config read returns locally without blocking on GitHub HTTP;
 - explicit GitHub refresh creates last-known-good state;
 - simulated GitHub/network failure preserves last-known-good;
-- V9 has 13 slots: TOP 2 / LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2;
+- no-TOP layout has 11 slots: LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2;
 - normal media path uses H.264 MP4, not GIF;
 - no unexpected GIF fallback;
 - 5-second sequential rotation advances;
 - 100-scroll burst does not repeatedly execute geometry;
 - scroll pauses video + rotation, then resumes;
-- injected fixed header cannot cover TOP;
+- injected fixed header cannot cover the LEFT/RIGHT rail start;
 - far-offscreen MIDDLE releases its media;
 - near-viewport MIDDLE mounts exactly five videos;
 - mobile/tablet hidden LEFT/RIGHT slots remain media-empty;
 - candidate ZIP and browser screenshot are archived.
 
-Current v0.7 automated Gate A: **PASS**.
+Current v0.7.1 automated Gate A: **PASS**.
 
 ## Media-generation gate
 
@@ -47,7 +47,7 @@ WebP poster  ≈ 0.30 MiB
 
 ## Gate B — one real user-owned WordPress site
 
-The v0.7 candidate must be installed on the selected real WordPress site and checked for:
+The v0.7.1 candidate must be installed on the selected real WordPress site and checked for:
 
 - perceptibly smooth scrolling;
 - correct TOP placement below the site's real fixed/sticky header;
