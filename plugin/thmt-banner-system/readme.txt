@@ -2,15 +2,24 @@
 Contributors: thmt
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 0.6.1
+Stable tag: 0.7.0
 License: Proprietary
 
-Central GitHub-driven banner renderer for the locked V9 layout.
+GitHub-driven banner renderer for the locked V9 layout.
 
-== Step 7 candidate hotfix ==
-* Fixes TOP overlap with fixed/sticky theme headers.
-* rAF-throttles scroll/resize layout work.
-* Removes expensive backdrop blur from fixed/sticky banner chrome.
-* MIDDLE GIFs are mounted only near the viewport and released when far away.
-* Banner swaps keep the previous image visible until the next GIF has loaded.
-* Keeps GitHub sync/cache, V9 layout and 5-second sequential rotation unchanged.
+== Step 7 Performance Engine v0.7.0 ==
+* Keeps V9 exactly: TOP 2 / LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2.
+* Replaces normal animated-GIF rendering with generated H.264 MP4 media.
+* Uses 15 fps H.264, full/small variants and WebP poster frames.
+* GIF assets remain as fallback/archive, not the normal render path.
+* Mobile/tablet do not mount hidden LEFT/RIGHT media.
+* MIDDLE media is mounted only near the viewport and released when far away.
+* Scroll freeze pauses video and rotation, then resumes after scrolling stops.
+* Hidden browser tabs pause video and rotation.
+* Geometry work is removed from the normal scroll path.
+* ResizeObserver/MutationObserver handle geometry and sticky-header changes.
+* Next rotation media is warmed gradually during idle time.
+* Frontend config reads are stale-while-revalidate and never block on GitHub HTTP.
+* Supports optional HTTPS media_base_url for a future CDN/R2 origin.
+* Adaptive profiles: full, lite and poster.
+* Empty brand URLs remain non-clickable.

@@ -1,28 +1,64 @@
 # Step 7 — WordPress Acceptance
 
-Step 7 has two gates.
+Step 7 has two gates. Do not create Stable V1 until both pass.
 
-## Gate A — clean WordPress integration
+## Gate A — automated clean WordPress
 
-GitHub Actions installs a clean WordPress + MariaDB instance, activates the plugin and verifies:
+The v0.7 acceptance workflow installs a clean WordPress + MariaDB instance, activates the candidate plugin and verifies:
 
-- plugin activation succeeds;
-- GitHub `config/banners.json` reaches WordPress;
-- last-known-good cache is created;
-- simulated GitHub/network failure falls back safely;
-- exactly 13 V9 slots render: TOP 2 / LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2;
-- all 13 currently visible GIFs load from the matching brand asset path;
-- `object-fit: contain` remains active;
-- visitor hide controls are absent;
-- side rails and bottom row remain within a 1440×1000 viewport;
-- rotation is running at 5000 ms;
-- the rendered brands change after one interval;
-- an installable Step 7 candidate ZIP and browser screenshot are archived.
+- plugin activation;
+- frontend config read returns locally without blocking on GitHub HTTP;
+- explicit GitHub refresh creates last-known-good state;
+- simulated GitHub/network failure preserves last-known-good;
+- V9 has 13 slots: TOP 2 / LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2;
+- normal media path uses H.264 MP4, not GIF;
+- no unexpected GIF fallback;
+- 5-second sequential rotation advances;
+- 100-scroll burst does not repeatedly execute geometry;
+- scroll pauses video + rotation, then resumes;
+- injected fixed header cannot cover TOP;
+- far-offscreen MIDDLE releases its media;
+- near-viewport MIDDLE mounts exactly five videos;
+- mobile/tablet hidden LEFT/RIGHT slots remain media-empty;
+- candidate ZIP and browser screenshot are archived.
 
-## Gate B — one real user-owned WordPress website
+Current v0.7 automated Gate A: **PASS**.
 
-Gate B remains required before Step 7 can be marked complete.
+## Media-generation gate
 
-Use the exact candidate ZIP produced by Gate A on one selected WordPress site. Verify desktop and mobile appearance, theme compatibility, scroll behavior and central GitHub config propagation.
+For all 42 source GIF creatives:
 
-Do not mark Step 7 complete and do not create Stable V1 until Gate B passes.
+- one full H.264 MP4;
+- one small H.264 MP4;
+- one WebP poster;
+- H.264 frame rate <= 15 fps;
+- generated set exactly matches config;
+- full MP4 set reduces source GIF bytes by at least 75%;
+- small MP4 set reduces source GIF bytes by at least 82%.
+
+Current generated totals:
+
+```text
+source GIF   ≈ 64.13 MiB
+full H264    ≈ 5.99 MiB
+small H264   ≈ 3.49 MiB
+WebP poster  ≈ 0.30 MiB
+```
+
+## Gate B — one real user-owned WordPress site
+
+The v0.7 candidate must be installed on the selected real WordPress site and checked for:
+
+- perceptibly smooth scrolling;
+- correct TOP placement below the site's real fixed/sticky header;
+- correct LEFT / RIGHT group scaling;
+- MIDDLE media appearing when approaching the section;
+- BOTTOM fixed placement;
+- no crop/stretch;
+- 5-second rotation;
+- no black flashes during normal media changes;
+- no hidden side-media load on narrower viewport;
+- acceptable desktop and mobile behavior;
+- central GitHub config propagation.
+
+Only after this real-site Gate B passes may the performance branch be merged and Step 8 Stable V1 be built.
