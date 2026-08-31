@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Locked V9 slot renderer.
+ * Performance renderer with TOP zone intentionally removed.
  *
  * v0.7 renders geometry only. Media is mounted client-side so hidden mobile
  * rails do not download anything and optimized MP4/WebP can be selected.
@@ -32,7 +32,8 @@ class THMT_Banner_Renderer {
 
     public function body_class( $classes ) {
         $classes[] = 'thmt-banner-v9-enabled';
-        $classes[] = 'thmt-banner-performance-v070';
+        $classes[] = 'thmt-banner-performance-v071';
+        $classes[] = 'thmt-banner-no-top';
         return $classes;
     }
 
@@ -86,11 +87,6 @@ class THMT_Banner_Renderer {
         }
         ?>
         <div id="thmt-banner-global" class="thmt-banner-global" data-thmt-baseline="V9_LOCKED" aria-label="Sponsored banners">
-            <div id="thmt-banner-top" class="thmt-banner-top-row" data-thmt-mount="top">
-                <?php echo $this->render_slot( 'TOP_1', 'horizontal' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                <?php echo $this->render_slot( 'TOP_2', 'horizontal' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-            </div>
-
             <aside class="thmt-banner-side-rail thmt-banner-side-left" aria-label="Sponsored banners left">
                 <?php echo $this->render_slot( 'LEFT_1', 'vertical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                 <?php echo $this->render_slot( 'LEFT_2', 'vertical' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
