@@ -1,0 +1,167 @@
+name: Step 7 WordPress acceptance
+
+on:
+  push:
+    branches:
+      - step7-wordpress-acceptance
+    paths:
+      - "plugin/**"
+      - "config/**"
+      - "scripts/step7_browser_test.cjs"
+      - ".github/workflows/step7-wordpress-acceptance.yml"
+  pull_request:
+    paths:
+      - "plugin/**"
+      - "config/**"
+      - "scripts/step7_browser_test.cjs"
+      - ".github/workflows/step7-wordpress-acceptance.yml"
+  workflow_dispatch:
+
+jobs:
+  wordpress-acceptance:
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_DATABASE: wordpress
+          MARIADB_USER: wordpress
+          MARIADB_PASSWORD: wordpress
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: mysqli
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build Step 7 installable plugin ZIP
+        run: |
+          mkdir -p dist
+          cd plugin
+          zip -qr "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-test-v0.6.0.zip" thmt-banner-system
+          unzip -l "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-test-v0.6.0.zip" | head -n 30
+
+      - name: Install WP-CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp
+          php /tmp/wp --info
+          chmod +x /tmp/wp
+          sudo mv /tmp/wp /usr/local/bin/wp
+
+      - name: Install clean WordPress
+        run: |
+          rm -rf /tmp/step7-wp
+          mkdir -p /tmp/step7-wp
+          wp core download --path=/tmp/step7-wp --force --allow-root
+          wp config create             --path=/tmp/step7-wp             --dbname=wordpress             --dbuser=wordpress             --dbpass=wordpress             --dbhost=127.0.0.1:3306             --skip-check             --allow-root
+          wp core install             --path=/tmp/step7-wp             --url=http://127.0.0.1:8080             --title="THMT Step 7"             --admin_user=step7admin             --admin_password=step7-password-not-secret             --admin_email=step7@example.invalid             --skip-email             --allow-root
+
+      - name: Install and activate THMT plugin
+        run: |
+          cp -R "$GITHUB_WORKSPACE/plugin/thmt-banner-system" /tmp/step7-wp/wp-content/plugins/thmt-banner-system
+          wp plugin activate thmt-banner-system --path=/tmp/step7-wp --allow-root
+          wp plugin status thmt-banner-system --path=/tmp/step7-wp --allow-root
+
+      - name: Create deterministic acceptance page
+        id: fixture
+        run: |
+          POST_ID=$(wp post create             --path=/tmp/step7-wp             --post_title="THMT Step 7 Banner Acceptance"             --post_name=thmt-step7-banner-acceptance             --post_status=publish             --post_type=post             --post_content='<p>Step 7 paragraph one.</p><p>Step 7 paragraph two.</p><p>Step 7 paragraph three.</p><p>Step 7 paragraph four.</p>'             --porcelain             --allow-root)
+          echo "post_id=$POST_ID" >> "$GITHUB_OUTPUT"
+          echo "Created post $POST_ID"
+
+      - name: Start WordPress HTTP server
+        run: |
+          nohup wp server             --path=/tmp/step7-wp             --host=127.0.0.1             --port=8080             --allow-root             >/tmp/step7-wp-server.log 2>&1 &
+          echo $! >/tmp/step7-wp-server.pid
+
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:8080/?p=${{ steps.fixture.outputs.post_id }}" >/tmp/step7-page.html; then
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/step7-wp-server.log
+          exit 1
+
+      - name: Verify GitHub sync reached WordPress cache
+        run: |
+          wp eval '
+            $meta = get_option("thmt_banner_sync_meta_v1", array());
+            $good = get_option("thmt_banner_last_good_config_v1", array());
+            if (empty($meta["last_success_at"])) {
+              fwrite(STDERR, "No successful GitHub sync metadata\n");
+              exit(1);
+            }
+            if (!is_array($good) || count($good["brands"] ?? array()) !== 14) {
+              fwrite(STDERR, "Last-known-good config is missing or invalid\n");
+              exit(1);
+            }
+            echo "PASS: GitHub sync source=" . ($meta["source"] ?? "unknown") . " brands=" . count($good["brands"]) . "\n";
+          ' --path=/tmp/step7-wp --allow-root
+
+      - name: Verify network failure falls back safely
+        run: |
+          mkdir -p /tmp/step7-wp/wp-content/mu-plugins
+          cat >/tmp/step7-wp/wp-content/mu-plugins/step7-bad-remote.php <<'PHP'
+          <?php
+          add_filter('thmt_banner_remote_config_url', static function () {
+              return 'http://127.0.0.1:9/step7-unreachable.json';
+          });
+          PHP
+
+          wp eval '
+            THMT_Banner_Config::invalidate_hot_cache();
+            $config = THMT_Banner_Config::refresh_remote(true);
+            if (!is_array($config) || count($config["brands"] ?? array()) !== 14) {
+              fwrite(STDERR, "Fallback did not preserve last-known-good config\n");
+              exit(1);
+            }
+            echo "PASS: network failure preserved " . count($config["brands"]) . " brands\n";
+          ' --path=/tmp/step7-wp --allow-root
+
+          rm -f /tmp/step7-wp/wp-content/mu-plugins/step7-bad-remote.php
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Browser acceptance — V9 layout, GIFs, rotation
+        env:
+          STEP7_URL: http://127.0.0.1:8080/?p=${{ steps.fixture.outputs.post_id }}
+          STEP7_SCREENSHOT: ${{ github.workspace }}/dist/step7-wordpress-v9.png
+        run: node scripts/step7_browser_test.cjs
+
+      - name: Show WordPress server log on failure
+        if: failure()
+        run: |
+          echo "===== WordPress server log ====="
+          cat /tmp/step7-wp-server.log || true
+          echo "===== First 200 lines of page ====="
+          sed -n '1,200p' /tmp/step7-page.html || true
+
+      - name: Upload Step 7 candidate + screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: thmt-banner-step7-candidate
+          path: |
+            dist/thmt-banner-system-step7-test-v0.6.0.zip
+            dist/step7-wordpress-v9.png
+          if-no-files-found: error
+          retention-days: 14
