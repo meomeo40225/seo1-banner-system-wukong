@@ -47,9 +47,29 @@ if (!url) {
     assert.strictEqual(initial.brandCount, 14, 'Runtime must see 14 enabled brands');
     assert.strictEqual(initial.intervalMs, 5000, 'Rotation interval must be 5000ms');
     assert.strictEqual(initial.running, true, 'Rotation timer must be running');
-    assert.strictEqual(initial.globalImages, 8, 'Only the 8 always-visible global GIFs should load initially');
-    assert.strictEqual(initial.middleImages, 0, 'Off-screen MIDDLE GIFs must not load initially');
+    assert.strictEqual(initial.globalImages, 8, 'The 8 always-visible global GIFs must load');
     assert.strictEqual(initial.hideControls, 0, 'Visitor hide controls must not exist');
+
+    /*
+     * The clean fixture is short, so MIDDLE may legitimately be near the first
+     * viewport. Force it far away, then prove the hotfix releases those GIFs.
+     */
+    await page.evaluate(() => {
+      const middle = document.querySelector('.thmt-banner-middle-zone');
+      const spacer = document.createElement('div');
+      spacer.id = 'step7-middle-offscreen-spacer';
+      spacer.style.height = '2200px';
+      middle.parentNode.insertBefore(spacer, middle);
+      window.scrollTo(0, 0);
+      window.THMTBannerRuntime.syncMiddleVisibility();
+      window.THMTBannerRuntime.requestLayout();
+    });
+    await page.waitForTimeout(100);
+
+    const offscreenMiddleImages = await page.evaluate(() =>
+      document.querySelectorAll('[data-slot^="MIDDLE_"] img').length
+    );
+    assert.strictEqual(offscreenMiddleImages, 0, 'Far off-screen MIDDLE GIFs must be released');
 
     const beforeBurst = await page.evaluate(() => window.THMTBannerRuntime.getLayoutPassCount());
     await page.evaluate(() => {
@@ -98,6 +118,7 @@ if (!url) {
     await page.evaluate(() => {
       document.getElementById('step7-fixed-header')?.remove();
       document.getElementById('step7-extra-scroll')?.remove();
+      document.getElementById('step7-middle-offscreen-spacer')?.remove();
       const middle = document.querySelector('.thmt-banner-middle-zone');
       const rect = middle.getBoundingClientRect();
       const target = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2);
