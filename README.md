@@ -22,10 +22,10 @@ WordPress plugin sync config từ GitHub, cache local, render layout V9 và tự
 - [x] GitHub sync/cache
 - [x] Step 7 automated clean-WordPress acceptance
 - [x] v0.7 Performance Engine automated acceptance
-- [ ] v0.7 real-site Gate B retest
+- [x] v0.7.1 real-site Gate B accepted
 - [ ] Stable V1 ZIP release
 
-## Performance Engine v0.7 candidate
+## Performance Engine v0.7.1 accepted candidate
 
 The original 42 animated GIFs total about **64.13 MiB**. GitHub Actions now generates, for every creative:
 
@@ -62,4 +62,4 @@ Additional performance controls:
 Mỗi brand chỉ có một field `url`. Ảnh/video và URL của brand được đổi cùng một render operation.
 
 ## Baseline
-V9 đã chốt cứng. Performance work không được thay đổi layout V9.
+User-approved v0.7.1 override: TOP removed. Active layout is LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2; performance work must not reintroduce TOP.
