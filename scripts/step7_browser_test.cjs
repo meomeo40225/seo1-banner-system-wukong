@@ -7,140 +7,187 @@ const { chromium } = require('playwright');
 
 const url = process.env.STEP7_URL;
 const screenshotPath = process.env.STEP7_SCREENSHOT;
+if (!url) throw new Error('STEP7_URL is required');
 
-if (!url) {
-  throw new Error('STEP7_URL is required');
+async function waitForGlobalMedia(page, expectedVideos) {
+  await page.waitForFunction((count) => {
+    const runtime = window.THMTBannerRuntime;
+    const videos = Array.from(document.querySelectorAll(
+      '[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
+    ));
+    return runtime && videos.length === count && videos.every((v) => v.currentSrc || v.querySelector('source'));
+  }, expectedVideos, { timeout: 60000 });
 }
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 1000 });
 
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitForGlobalMedia(page, 6);
 
-    await page.waitForFunction(() => {
-      const slots = Array.from(document.querySelectorAll('[data-slot]'));
-      const images = Array.from(document.querySelectorAll('[data-slot] img'));
-      return slots.length === 13 &&
-        images.length === 13 &&
-        images.every((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
-    }, { timeout: 60000 });
-
-    const initial = await page.evaluate(() => {
-      const runtime = window.THMTBannerRuntime;
-      const system = window.THMTBannerSystem;
-      if (!runtime || !system) {
-        throw new Error('THMT runtime/config globals are missing');
-      }
-
-      const slots = Array.from(document.querySelectorAll('[data-slot]')).map((slot) => {
-        const img = slot.querySelector('img');
-        const link = slot.querySelector('.thmt-banner-link');
-        const style = img ? getComputedStyle(img) : null;
-
-        return {
-          id: slot.getAttribute('data-slot'),
-          brand: slot.getAttribute('data-brand'),
-          size: slot.getAttribute('data-size'),
-          src: img ? img.src : '',
-          naturalWidth: img ? img.naturalWidth : 0,
-          naturalHeight: img ? img.naturalHeight : 0,
-          objectFit: style ? style.objectFit : '',
-          href: link ? link.href : ''
-        };
-      });
-
-      const rect = (selector) => {
-        const el = document.querySelector(selector);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
-      };
-
-      return {
-        brandCount: runtime.getBrandCount(),
-        intervalMs: runtime.getIntervalMs(),
-        currentTick: runtime.getCurrentTick(),
-        running: runtime.isRunning(),
-        configBrands: system.config.brands,
-        slots,
-        hideControls: document.querySelectorAll('[data-thmt-hide], .thmt-banner-hide, .thmt-banner-toggle').length,
-        top: rect('#thmt-banner-top'),
-        left: rect('.thmt-banner-side-left'),
-        right: rect('.thmt-banner-side-right'),
-        bottom: rect('#thmt-banner-bottom'),
-        viewport: { width: innerWidth, height: innerHeight }
-      };
-    });
-
-    assert.strictEqual(initial.brandCount, 14, 'Runtime must see 14 enabled brands');
-    assert.strictEqual(initial.intervalMs, 5000, 'Rotation interval must be 5000ms');
-    assert.strictEqual(initial.running, true, 'Rotation timer must be running');
-    assert.strictEqual(initial.slots.length, 13, 'Exactly 13 visible V9 slots must exist');
-    assert.strictEqual(initial.hideControls, 0, 'Visitor hide controls must not exist');
-
-    const prefixCount = (prefix) => initial.slots.filter((slot) => slot.id.startsWith(prefix)).length;
-    assert.strictEqual(prefixCount('TOP_'), 2, 'TOP count');
-    assert.strictEqual(prefixCount('LEFT_'), 2, 'LEFT count');
-    assert.strictEqual(prefixCount('RIGHT_'), 2, 'RIGHT count');
-    assert.strictEqual(prefixCount('MIDDLE_'), 5, 'MIDDLE count');
-    assert.strictEqual(prefixCount('BOTTOM_'), 2, 'BOTTOM count');
-
-    const middleBrands = new Set(
-      initial.slots.filter((slot) => slot.id.startsWith('MIDDLE_')).map((slot) => slot.brand)
-    );
-    assert.strictEqual(middleBrands.size, 5, 'MIDDLE must display 5 distinct brands');
-
-    const brandByName = new Map(initial.configBrands.map((brand) => [String(brand.name || brand.id), brand]));
-    for (const slot of initial.slots) {
-      assert(slot.naturalWidth > 0 && slot.naturalHeight > 0, slot.id + ' image failed to load');
-      assert.strictEqual(slot.objectFit, 'contain', slot.id + ' must use object-fit: contain');
-
-      const brand = brandByName.get(slot.brand);
-      assert(brand, slot.id + ' rendered unknown brand ' + slot.brand);
-
-      const expectedPath = '/assets/' + brand.id + '/';
-      assert(slot.src.includes(expectedPath), slot.id + ' image does not match brand path');
-
-      if (!String(brand.url || '').trim()) {
-        assert.strictEqual(slot.href, '', slot.id + ' must not be clickable while brand URL is blank');
-      }
-    }
-
-    const inViewport = (rect, label) => {
-      assert(rect && rect.width > 0 && rect.height > 0, label + ' must be rendered');
-      assert(rect.left >= -1, label + ' overflows viewport left');
-      assert(rect.right <= initial.viewport.width + 1, label + ' overflows viewport right');
-      assert(rect.top >= -1, label + ' overflows viewport top');
-      assert(rect.bottom <= initial.viewport.height + 1, label + ' overflows viewport bottom');
-    };
-
-    inViewport(initial.left, 'LEFT rail');
-    inViewport(initial.right, 'RIGHT rail');
-    inViewport(initial.bottom, 'BOTTOM row');
-
-    const firstBrands = initial.slots.map((slot) => slot.brand);
-    const firstTick = initial.currentTick;
-
-    await page.waitForTimeout(5400);
-
-    const after = await page.evaluate(() => ({
-      currentTick: window.THMTBannerRuntime.getCurrentTick(),
+    const initial = await page.evaluate(() => ({
+      version: window.THMTBannerRuntime.version,
+      profile: window.THMTBannerRuntime.getPerformanceProfile(),
+      brandCount: window.THMTBannerRuntime.getBrandCount(),
+      interval: window.THMTBannerRuntime.getIntervalMs(),
       running: window.THMTBannerRuntime.isRunning(),
-      brands: Array.from(document.querySelectorAll('[data-slot]')).map((slot) => slot.getAttribute('data-brand'))
+      slots: document.querySelectorAll('[data-slot]').length,
+      globalVideos: document.querySelectorAll(
+        '[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
+      ).length,
+      gifFallbacks: document.querySelectorAll('.thmt-banner-gif-fallback').length,
+      mediaKinds: Array.from(document.querySelectorAll('[data-slot]')).map((s) => s.dataset.media || '')
     }));
 
-    assert.strictEqual(after.running, true, 'Rotation must still be running after one interval');
-    assert.notStrictEqual(after.currentTick, firstTick, 'Rotation tick must advance after 5 seconds');
-    assert(after.brands.some((brand, index) => brand !== firstBrands[index]), 'At least one banner must rotate');
+    assert.strictEqual(initial.version, '0.7.1');
+    assert.strictEqual(initial.profile, 'full');
+    assert.strictEqual(initial.brandCount, 14);
+    assert.strictEqual(initial.interval, 5000);
+    assert.strictEqual(initial.running, true);
+    assert.strictEqual(initial.slots, 11);
+    assert.strictEqual(initial.globalVideos, 6);
+    assert.strictEqual(initial.gifFallbacks, 0);
+    assert.strictEqual(await page.locator('[data-slot^="TOP_"]').count(), 0, 'TOP slots must not exist');
+    assert.strictEqual(await page.locator('#thmt-banner-top').count(), 0, 'TOP container must not exist');
+    assert(initial.mediaKinds.some((x) => x.startsWith('mp4')));
+
+    const mediaSources = await page.evaluate(() => ({
+      mp4: Array.from(document.querySelectorAll('video source')).map((s) => s.src),
+      gifFallbacks: Array.from(document.querySelectorAll('.thmt-banner-gif-fallback')).map((img) => img.src)
+    }));
+    assert(mediaSources.mp4.length >= 6, 'Desktop global slots must point at MP4 media');
+    assert(mediaSources.mp4.every((x) => x.includes('/media/') && x.endsWith('.mp4')), 'Normal media source must be optimized MP4');
+    assert.strictEqual(mediaSources.gifFallbacks.length, 0, 'GIF should not load in normal v0.7.1 path');
+
+    await page.evaluate(() => window.dispatchEvent(new Event('scroll')));
+    await page.waitForTimeout(250);
+    const beforeGeometry = await page.evaluate(() => window.THMTBannerRuntime.getGeometryPassCount());
+
+    await page.evaluate(() => {
+      for (let i = 0; i < 100; i += 1) window.dispatchEvent(new Event('scroll'));
+    });
+
+    const frozen = await page.evaluate(() => ({
+      scrolling: window.THMTBannerRuntime.isScrolling(),
+      running: window.THMTBannerRuntime.isRunning(),
+      paused: Array.from(document.querySelectorAll('[data-slot] video')).every((v) => v.paused)
+    }));
+    assert.strictEqual(frozen.scrolling, true);
+    assert.strictEqual(frozen.running, false);
+    assert.strictEqual(frozen.paused, true);
+
+    await page.waitForTimeout(250);
+    const afterGeometry = await page.evaluate(() => window.THMTBannerRuntime.getGeometryPassCount());
+    assert(afterGeometry - beforeGeometry <= 1, 'scroll burst must not repeatedly calculate geometry');
+
+    const resumed = await page.evaluate(() => ({
+      scrolling: window.THMTBannerRuntime.isScrolling(),
+      running: window.THMTBannerRuntime.isRunning()
+    }));
+    assert.strictEqual(resumed.scrolling, false);
+    assert.strictEqual(resumed.running, true);
+
+    await page.evaluate(() => {
+      const header = document.createElement('header');
+      header.id = 'step7-fixed-header';
+      Object.assign(header.style, {
+        position: 'fixed', left: '0', right: '0', top: '0', height: '120px', zIndex: '100000', background: '#111'
+      });
+      document.body.appendChild(header);
+      window.THMTBannerRuntime.refreshHeaderCandidates();
+      window.THMTBannerRuntime.recomputeGeometry();
+    });
+    await page.waitForTimeout(100);
+
+    const headerGeometry = await page.evaluate(() => {
+      const rail = document.querySelector('.thmt-banner-side-left').getBoundingClientRect();
+      const header = document.getElementById('step7-fixed-header').getBoundingClientRect();
+      return { railTop: rail.top, headerBottom: header.bottom, railHeight: rail.height };
+    });
+    assert(headerGeometry.railHeight > 20);
+    assert(headerGeometry.railTop >= headerGeometry.headerBottom + 6, 'LEFT/RIGHT rails must start below fixed header');
+    await page.evaluate(() => document.getElementById('step7-fixed-header')?.remove());
+
+    await page.evaluate(() => {
+      const middle = document.querySelector('.thmt-banner-middle-zone');
+      const spacer = document.createElement('div');
+      spacer.id = 'step7-middle-spacer';
+      spacer.style.height = '2600px';
+      middle.parentNode.insertBefore(spacer, middle);
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(300);
+
+    const middleFar = await page.evaluate(() =>
+      document.querySelectorAll('[data-slot^="MIDDLE_"] video,[data-slot^="MIDDLE_"] img').length
+    );
+    assert.strictEqual(middleFar, 0, 'far MIDDLE media must be released');
+
+    await page.evaluate(() => {
+      document.getElementById('step7-middle-spacer')?.remove();
+      document.querySelector('.thmt-banner-middle-zone').scrollIntoView({ block: 'center' });
+    });
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-slot^="MIDDLE_"] video').length === 5,
+      null,
+      { timeout: 15000 }
+    );
+
+    const middle = await page.evaluate(() => ({
+      count: document.querySelectorAll('[data-slot^="MIDDLE_"] video').length,
+      brands: Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"]')).map((s) => s.dataset.brand),
+      sources: Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"] video source')).map((s) => s.src)
+    }));
+    assert.strictEqual(middle.count, 5);
+    assert.strictEqual(new Set(middle.brands).size, 5);
+    assert(middle.sources.every((x) => x.includes('/media/') && x.endsWith('.mp4')));
+
+    const beforeTick = await page.evaluate(() => ({
+      tick: window.THMTBannerRuntime.getCurrentTick(),
+      brands: Array.from(document.querySelectorAll('[data-slot^="BOTTOM_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"]')).map((s) => s.dataset.brand)
+    }));
+    await page.waitForTimeout(5400);
+
+    const afterTick = await page.evaluate(() => ({
+      tick: window.THMTBannerRuntime.getCurrentTick(),
+      running: window.THMTBannerRuntime.isRunning(),
+      brands: Array.from(document.querySelectorAll('[data-slot^="BOTTOM_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"]')).map((s) => s.dataset.brand),
+      fallback: document.querySelectorAll('.thmt-banner-gif-fallback').length
+    }));
+    assert.notStrictEqual(afterTick.tick, beforeTick.tick);
+    assert.strictEqual(afterTick.running, true);
+    assert.strictEqual(afterTick.fallback, 0);
+    assert(afterTick.brands.some((b, i) => b !== beforeTick.brands[i]));
+
+    const mobile = await context.newPage();
+    await mobile.setViewportSize({ width: 800, height: 900 });
+    await mobile.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await mobile.waitForFunction(
+      () => window.THMTBannerRuntime && document.querySelectorAll('[data-slot^="BOTTOM_"] video').length === 2,
+      null,
+      { timeout: 60000 }
+    );
+
+    const mobileState = await mobile.evaluate(() => ({
+      sideChildren: Array.from(document.querySelectorAll('[data-slot^="LEFT_"],[data-slot^="RIGHT_"]')).reduce((n, s) => n + s.children.length, 0),
+      sideVideos: document.querySelectorAll('[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video').length,
+      gifFallback: document.querySelectorAll('.thmt-banner-gif-fallback').length
+    }));
+    assert.strictEqual(mobileState.sideChildren, 0, 'hidden mobile side slots must remain empty');
+    assert.strictEqual(mobileState.sideVideos, 0);
+    assert.strictEqual(mobileState.gifFallback, 0);
+    await mobile.close();
 
     if (screenshotPath) {
       fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
       await page.screenshot({ path: screenshotPath, fullPage: true });
     }
 
-    console.log('PASS: real WordPress install + 13-slot V9 layout + remote GIF loading + 5s rotation.');
+    console.log('PASS: v0.7.1 no-TOP MP4 engine + scroll freeze + lazy MIDDLE + mobile no-side-load + rail header offset.');
   } finally {
     await browser.close();
   }

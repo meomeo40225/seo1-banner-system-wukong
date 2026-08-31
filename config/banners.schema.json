@@ -15,6 +15,7 @@
         "rotation_interval_seconds":{"type":"integer","minimum":1},
         "rotation_mode":{"enum":["sequential","random"]},
         "github_sync_interval_seconds":{"type":"integer","minimum":30},
+        "media_base_url":{"type":"string","description":"Optional HTTPS CDN/R2 base URL. Empty/omitted uses the plugin default media origin."},
         "fit_mode":{"const":"contain"},
         "allow_hide_controls":{"const":false}
       },

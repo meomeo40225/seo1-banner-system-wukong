@@ -1,0 +1,48 @@
+name: Generate optimized banner media
+
+on:
+  push:
+    branches:
+      - main
+      - step7-performance-engine-v070
+    paths:
+      - "assets/**"
+      - "config/banners.json"
+      - "scripts/generate_media.py"
+      - ".github/workflows/generate-media.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: banner-media-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate-media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Generate H.264 + small variants + WebP posters
+        run: python3 scripts/generate_media.py
+
+      - name: Commit generated media when changed
+        run: |
+          git add media
+          if git diff --cached --quiet; then
+            echo "Media already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Performance media: generate H264 variants and WebP posters"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

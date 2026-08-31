@@ -2,110 +2,109 @@
 import json
 from pathlib import Path
 
-root = Path(__file__).resolve().parents[1]
-plugin = root / "plugin" / "thmt-banner-system"
+ROOT = Path(__file__).resolve().parents[1]
+PLUGIN = ROOT / "plugin" / "thmt-banner-system"
 
 required = [
-    plugin / "thmt-banner-system.php",
-    plugin / "includes" / "class-thmt-banner-config.php",
-    plugin / "includes" / "class-thmt-banner-renderer.php",
-    plugin / "assets" / "css" / "frontend.css",
-    plugin / "assets" / "js" / "rotation-core.js",
-    plugin / "assets" / "js" / "frontend.js",
-    plugin / "config" / "banners.json",
-    plugin / "readme.txt",
+    PLUGIN / "thmt-banner-system.php",
+    PLUGIN / "includes" / "class-thmt-banner-config.php",
+    PLUGIN / "includes" / "class-thmt-banner-renderer.php",
+    PLUGIN / "assets" / "css" / "frontend.css",
+    PLUGIN / "assets" / "js" / "rotation-core.js",
+    PLUGIN / "assets" / "js" / "frontend.js",
+    PLUGIN / "config" / "banners.json",
+    PLUGIN / "readme.txt",
+    ROOT / "media" / "manifest.json",
 ]
-missing = [str(p.relative_to(root)) for p in required if not p.is_file()]
+missing = [str(p.relative_to(ROOT)) for p in required if not p.is_file()]
 if missing:
-    raise SystemExit(f"ERROR: missing plugin files: {missing}")
+    raise SystemExit(f"ERROR: missing files: {missing}")
 
-root_cfg = json.loads((root / "config" / "banners.json").read_text(encoding="utf-8"))
-plugin_cfg = json.loads((plugin / "config" / "banners.json").read_text(encoding="utf-8"))
+root_cfg = json.loads((ROOT / "config" / "banners.json").read_text(encoding="utf-8"))
+plugin_cfg = json.loads((PLUGIN / "config" / "banners.json").read_text(encoding="utf-8"))
 if root_cfg != plugin_cfg:
     raise SystemExit("ERROR: plugin config snapshot differs from root config/banners.json")
 
-if plugin_cfg.get("layout", {}).get("baseline") != "V9_LOCKED":
-    raise SystemExit("ERROR: plugin snapshot baseline is not V9_LOCKED")
-if len(plugin_cfg.get("brands", [])) != 14:
-    raise SystemExit("ERROR: bundled plugin snapshot must currently contain 14 brands")
+if root_cfg.get("layout", {}).get("baseline") != "V9_LOCKED":
+    raise SystemExit("ERROR: V9 baseline drift")
+if len(root_cfg.get("brands", [])) != 14:
+    raise SystemExit("ERROR: current bundled snapshot must contain 14 brands")
+if root_cfg.get("system", {}).get("rotation_interval_seconds") != 5:
+    raise SystemExit("ERROR: rotation interval drift")
+if root_cfg.get("system", {}).get("github_sync_interval_seconds") != 300:
+    raise SystemExit("ERROR: sync interval drift")
 
-system = plugin_cfg.get("system", {})
-if system.get("rotation_mode") != "sequential":
-    raise SystemExit("ERROR: Step 6 must preserve sequential rotation mode")
-if system.get("rotation_interval_seconds") != 5:
-    raise SystemExit("ERROR: current V9 rotation interval must be 5 seconds")
-if system.get("github_sync_interval_seconds") != 300:
-    raise SystemExit("ERROR: current GitHub sync interval must be 300 seconds")
+main_php = (PLUGIN / "thmt-banner-system.php").read_text(encoding="utf-8")
+for marker in ["0.7.1", "THMT_Banner_Config::register()", "register_activation_hook", "register_deactivation_hook"]:
+    if marker not in main_php:
+        raise SystemExit(f"ERROR: bootstrap marker missing: {marker}")
 
-layout = plugin_cfg["layout"]
-expected_counts = {"top": 2, "left": 2, "right": 2, "middle": 5, "bottom": 2}
-for key, expected in expected_counts.items():
-    actual = layout.get(key, {}).get("visible_count")
-    if actual != expected:
-        raise SystemExit(f"ERROR: {key} visible_count expected {expected}, got {actual}")
-
-renderer = (plugin / "includes" / "class-thmt-banner-renderer.php").read_text(encoding="utf-8")
-for slot in [
-    "TOP_1", "TOP_2", "LEFT_1", "LEFT_2", "RIGHT_1", "RIGHT_2",
-    "BOTTOM_1", "BOTTOM_2", "MIDDLE_"
-]:
-    if slot not in renderer:
-        raise SystemExit(f"ERROR: renderer missing slot marker {slot}")
-if "thmt-banner-rotation-core" not in renderer:
-    raise SystemExit("ERROR: rotation core is not enqueued before frontend.js")
-if "'step'         => 6" not in renderer:
-    raise SystemExit("ERROR: renderer must expose Step 6")
-
-js = (plugin / "assets" / "js" / "frontend.js").read_text(encoding="utf-8")
-required_js = [
-    "window.THMTBannerRuntime",
-    "renderTick",
-    "startRotation",
-    "stopRotation",
-    "window.setInterval",
-    "rotation_interval_seconds",
-    "link.href = item.url",
-    "img.src = item.image",
-]
-for marker in required_js:
-    if marker not in js:
-        raise SystemExit(f"ERROR: Step 5 rotation marker missing after Step 6: {marker}")
-
-config_php = (plugin / "includes" / "class-thmt-banner-config.php").read_text(encoding="utf-8")
-required_sync_markers = [
-    "REMOTE_CONFIG_URL",
+config_php = (PLUGIN / "includes" / "class-thmt-banner-config.php").read_text(encoding="utf-8")
+for marker in [
+    "REFRESH_HOOK",
+    "schedule_background_refresh",
+    "wp_schedule_single_event",
     "wp_remote_get(",
-    "get_transient(",
-    "set_transient(",
-    "get_option(",
-    "update_option(",
+    "media_base_url",
+    "performance_profile_override",
+    "OPTION_LAST_GOOD",
     "If-None-Match",
     "If-Modified-Since",
-    "304 === $code",
-    "OPTION_LAST_GOOD",
-    "TRANSIENT_LOCK",
-    "github_sync_interval_seconds",
-    "validate_candidate",
-    "wp_schedule_event(",
-]
-for marker in required_sync_markers:
-    if marker not in config_php:
-        raise SystemExit(f"ERROR: Step 6 sync/cache marker missing: {marker}")
-
-main_php = (plugin / "thmt-banner-system.php").read_text(encoding="utf-8")
-for marker in [
-    "THMT_Banner_Config::register()",
-    "register_activation_hook",
-    "register_deactivation_hook",
-    "0.6.0",
 ]:
-    if marker not in main_php:
-        raise SystemExit(f"ERROR: Step 6 bootstrap marker missing: {marker}")
+    if marker not in config_php:
+        raise SystemExit(f"ERROR: config marker missing: {marker}")
 
-css = (plugin / "assets" / "css" / "frontend.css").read_text(encoding="utf-8")
+get_start = config_php.find("public static function get()")
+get_end = config_php.find("public static function schedule_background_refresh", get_start)
+if get_start < 0 or get_end < 0:
+    raise SystemExit("ERROR: could not inspect get()")
+if "wp_remote_get(" in config_php[get_start:get_end] or "refresh_remote(" in config_php[get_start:get_end]:
+    raise SystemExit("ERROR: frontend get() must not block on remote HTTP")
+
+renderer = (PLUGIN / "includes" / "class-thmt-banner-renderer.php").read_text(encoding="utf-8")
+for slot in ["LEFT_1", "LEFT_2", "RIGHT_1", "RIGHT_2", "BOTTOM_1", "BOTTOM_2", "MIDDLE_"]:
+    if slot not in renderer:
+        raise SystemExit(f"ERROR: renderer missing {slot}")
+if "TOP_1" in renderer or "TOP_2" in renderer or "thmt-banner-top" in renderer:
+    raise SystemExit("ERROR: v0.7.1 must not render TOP slots")
+if "data-kind" not in renderer:
+    raise SystemExit("ERROR: renderer must emit media-free slot geometry")
+if "<img" in renderer or "<video" in renderer:
+    raise SystemExit("ERROR: PHP renderer must not eagerly mount banner media")
+
+js = (PLUGIN / "assets" / "js" / "frontend.js").read_text(encoding="utf-8")
+for marker in [
+    "mediaBaseUrl",
+    "video/mp4",
+    "-poster.webp",
+    "-sm.mp4",
+    "IntersectionObserver",
+    "ResizeObserver",
+    "MutationObserver",
+    "requestIdleCallback",
+    "visibilitychange",
+    "isScrolling",
+    "pauseVideos",
+    "resumeVideos",
+    "desktopMql",
+    "gif-fallback",
+    "0.7.1",
+]:
+    if marker not in js:
+        raise SystemExit(f"ERROR: performance engine marker missing: {marker}")
+
+if "renderSlot('TOP_1'" in js or "renderSlot('TOP_2'" in js:
+    raise SystemExit("ERROR: v0.7.1 JS must not render TOP media")
+
+if "window.addEventListener('scroll', scheduleGeometry" in js or "window.addEventListener('scroll', recomputeGeometry" in js:
+    raise SystemExit("ERROR: scroll path must not perform geometry calculation")
+
+css = (PLUGIN / "assets" / "css" / "frontend.css").read_text(encoding="utf-8")
 if "object-fit: contain" not in css:
-    raise SystemExit("ERROR: V9 contain rule missing")
-if ".thmt-banner-side-rail" not in css:
-    raise SystemExit("ERROR: side rail styling missing")
+    raise SystemExit("ERROR: contain rule missing")
+if "backdrop-filter" in css:
+    raise SystemExit("ERROR: backdrop-filter reintroduces fixed-layer jank")
+if "@media (max-width: 1200px)" not in css:
+    raise SystemExit("ERROR: mobile side rail policy missing")
 
-print("PASS: Step 6 GitHub sync/cache + last-known-good + V9 renderer/rotation contract.")
+print("PASS: v0.7.1 no-TOP performance engine + LEFT/RIGHT/MIDDLE/BOTTOM + SWR config.")
