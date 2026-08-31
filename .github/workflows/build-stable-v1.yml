@@ -1,0 +1,115 @@
+name: Build Stable V1
+
+on:
+  push:
+    branches:
+      - step8-stable-v1
+      - main
+    paths:
+      - "plugin/**"
+      - "config/**"
+      - "media/**"
+      - "scripts/validate_plugin.py"
+      - "scripts/validate_media.py"
+      - "scripts/test_rotation_core.js"
+      - "scripts/test_sync_policy.php"
+      - "scripts/test_swr_policy.php"
+      - "docs/RELEASE_V1.md"
+      - ".github/workflows/build-stable-v1.yml"
+  workflow_dispatch:
+
+jobs:
+  build-stable-v1:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Verify Stable V1 version
+        run: |
+          grep -F "Version: 1.0.0" plugin/thmt-banner-system/thmt-banner-system.php
+          grep -F "THMT_BANNER_SYSTEM_VERSION', '1.0.0'" plugin/thmt-banner-system/thmt-banner-system.php
+          grep -F "Stable tag: 1.0.0" plugin/thmt-banner-system/readme.txt
+          grep -F "version: '1.0.0'" plugin/thmt-banner-system/assets/js/frontend.js
+
+      - name: PHP syntax
+        run: find plugin/thmt-banner-system -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: JavaScript syntax
+        run: |
+          node --check plugin/thmt-banner-system/assets/js/rotation-core.js
+          node --check plugin/thmt-banner-system/assets/js/frontend.js
+
+      - name: Rotation behavior
+        run: node scripts/test_rotation_core.js
+
+      - name: Sync/cache policy
+        run: php scripts/test_sync_policy.php
+
+      - name: Stale-while-revalidate policy
+        run: php scripts/test_swr_policy.php
+
+      - name: Optimized media contract
+        run: python scripts/validate_media.py
+
+      - name: Stable plugin contract
+        run: python scripts/validate_plugin.py
+
+      - name: Build immutable plugin ZIP
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          cd plugin
+          zip -qr "$GITHUB_WORKSPACE/dist/thmt-banner-system-stable-v1.0.0.zip" thmt-banner-system
+          cd "$GITHUB_WORKSPACE"
+          sha256sum dist/thmt-banner-system-stable-v1.0.0.zip > dist/thmt-banner-system-stable-v1.0.0.zip.sha256
+
+      - name: Validate ZIP structure
+        run: |
+          unzip -l dist/thmt-banner-system-stable-v1.0.0.zip
+          test "$(unzip -Z1 dist/thmt-banner-system-stable-v1.0.0.zip | grep -c '^thmt-banner-system/thmt-banner-system.php$')" -eq 1
+          if unzip -Z1 dist/thmt-banner-system-stable-v1.0.0.zip | grep -Eq '(^|/)(__MACOSX|\.DS_Store)(/|$)'; then
+            echo "ERROR: macOS junk found in ZIP"
+            exit 1
+          fi
+
+      - name: Write release manifest
+        run: |
+          COMMIT_SHA="$GITHUB_SHA"
+          CHECKSUM="$(cut -d' ' -f1 dist/thmt-banner-system-stable-v1.0.0.zip.sha256)"
+          cat > dist/STABLE_V1_MANIFEST.txt <<EOF
+          THMT Banner System Stable V1
+          Version: 1.0.0
+          Commit: $COMMIT_SHA
+          SHA256: $CHECKSUM
+          Layout: TOP=0 LEFT=2 RIGHT=2 MIDDLE=5 BOTTOM=2
+          EOF
+          cat dist/STABLE_V1_MANIFEST.txt
+
+      - name: Upload Stable V1
+        uses: actions/upload-artifact@v4
+        with:
+          name: thmt-banner-system-stable-v1.0.0
+          path: |
+            dist/thmt-banner-system-stable-v1.0.0.zip
+            dist/thmt-banner-system-stable-v1.0.0.zip.sha256
+            dist/STABLE_V1_MANIFEST.txt
+          if-no-files-found: error
+          retention-days: 90
