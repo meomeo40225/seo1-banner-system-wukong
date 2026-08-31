@@ -43,7 +43,7 @@ async function waitForGlobalMedia(page, expectedVideos) {
       mediaKinds: Array.from(document.querySelectorAll('[data-slot]')).map((s) => s.dataset.media || '')
     }));
 
-    assert.strictEqual(initial.version, '1.0.0');
+    assert.strictEqual(initial.version, '1.0.1');
     assert.strictEqual(initial.profile, 'full');
     assert.strictEqual(initial.brandCount, 14);
     assert.strictEqual(initial.interval, 5000);
@@ -187,7 +187,7 @@ async function waitForGlobalMedia(page, expectedVideos) {
       await page.screenshot({ path: screenshotPath, fullPage: true });
     }
 
-    console.log('PASS: Stable V1 1.0.0 no-TOP MP4 engine + scroll freeze + lazy MIDDLE + mobile no-side-load + rail header offset.');
+    console.log('PASS: Candidate 1.0.1 Pages delivery + no-TOP MP4 engine + scroll freeze + lazy MIDDLE + mobile no-side-load + rail header offset.');
   } finally {
     await browser.close();
   }
