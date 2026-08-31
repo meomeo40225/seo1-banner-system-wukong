@@ -328,8 +328,6 @@
     if (!brands.length) return;
     var frame = currentFrame(tick, brands.length);
 
-    renderSlot('TOP_1', bannerFor(frame.top[0], 'horizontal'));
-    renderSlot('TOP_2', bannerFor(frame.top[1], 'horizontal'));
     renderSlot('BOTTOM_1', bannerFor(frame.bottom[0], 'horizontal'));
     renderSlot('BOTTOM_2', bannerFor(frame.bottom[1], 'horizontal'));
 
@@ -464,8 +462,6 @@
       var nextTick = rotationCore ? rotationCore.nextTick(currentTick, brands.length) : (currentTick + 1) % brands.length;
       var frame = currentFrame(nextTick, brands.length);
       var items = [
-        ['TOP_1', bannerFor(frame.top[0], 'horizontal')],
-        ['TOP_2', bannerFor(frame.top[1], 'horizontal')],
         ['BOTTOM_1', bannerFor(frame.bottom[0], 'horizontal')],
         ['BOTTOM_2', bannerFor(frame.bottom[1], 'horizontal')]
       ];
@@ -515,7 +511,6 @@
   }
 
   function discoverDom() {
-    dom.top = document.getElementById('thmt-banner-top');
     dom.bottom = document.getElementById('thmt-banner-bottom');
     dom.left = document.querySelector('.thmt-banner-side-left');
     dom.right = document.querySelector('.thmt-banner-side-right');
@@ -525,13 +520,6 @@
     document.querySelectorAll('[data-slot]').forEach(function (slot) {
       slots[slot.getAttribute('data-slot')] = slot;
     });
-  }
-
-  function mountTop() {
-    if (!dom.top || dom.top.classList.contains('is-mounted')) return;
-    var target = contentTarget();
-    target.insertBefore(dom.top, target.firstChild);
-    dom.top.classList.add('is-mounted');
   }
 
   function discoverHeaders() {
@@ -580,18 +568,15 @@
   function recomputeGeometry() {
     geometryQueued = false;
     geometryPassCount += 1;
-    if (!dom.top || !dom.bottom || !dom.left || !dom.right) return;
+    if (!dom.bottom || !dom.left || !dom.right) return;
 
     var occlusion = fixedHeaderBottom();
-    dom.top.style.setProperty('--thmt-sticky-top', (Math.ceil(occlusion) + 8) + 'px');
-
     var shellRect = dom.shell.getBoundingClientRect();
     if (window.innerWidth > 1200) {
       var leftEdge = Math.max(12, shellRect.left + 12);
       var rightEdge = Math.max(12, (window.innerWidth - shellRect.right) + 12);
-      var topRect = dom.top.getBoundingClientRect();
       var bottomRect = dom.bottom.getBoundingClientRect();
-      var railTop = Math.max(occlusion + 8, topRect.bottom + 8);
+      var railTop = occlusion + 8;
       var railBottom = Math.min(window.innerHeight - 8, bottomRect.top - 8);
       var availableHeight = Math.max(120, railBottom - railTop);
       var nextScale = Math.min(1, availableHeight / 1010);
@@ -627,7 +612,7 @@
     if ('ResizeObserver' in window) {
       if (resizeObserver) resizeObserver.disconnect();
       resizeObserver = new ResizeObserver(scheduleGeometry);
-      [dom.shell, dom.top, dom.bottom].concat(headerNodes).forEach(function (node) {
+      [dom.shell, dom.bottom].concat(headerNodes).forEach(function (node) {
         if (node) resizeObserver.observe(node);
       });
     }
@@ -684,7 +669,6 @@
 
   function init() {
     discoverDom();
-    mountTop();
     discoverHeaders();
     setupMiddleObserver();
     recomputeGeometry();
@@ -700,7 +684,7 @@
   }
 
   window.THMTBannerRuntime = {
-    version: '0.7.0',
+    version: '0.7.1',
     baseline: 'V9_LOCKED',
     renderTick: renderTick,
     startRotation: startRotation,
