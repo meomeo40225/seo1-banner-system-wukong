@@ -5,7 +5,10 @@
   var config = state.config || {};
   var assetBaseUrl = String(state.assetBaseUrl || '');
   var debug = Boolean(state.debug);
+  var rotationCore = window.THMTRotationCore || null;
   var currentRailScale = 1;
+  var currentTick = 0;
+  var rotationTimer = null;
 
   function enabledBrands() {
     var brands = Array.isArray(config.brands) ? config.brands : [];
@@ -68,20 +71,70 @@
   }
 
   function renderTick(tick) {
-    renderSlot('TOP_1', bannerFor(tick + 0, 'horizontal'));
-    renderSlot('TOP_2', bannerFor(tick + 6, 'horizontal'));
-    renderSlot('LEFT_1', bannerFor(tick + 1, 'vertical'));
-    renderSlot('LEFT_2', bannerFor(tick + 4, 'vertical'));
-    renderSlot('RIGHT_1', bannerFor(tick + 7, 'vertical'));
-    renderSlot('RIGHT_2', bannerFor(tick + 10, 'vertical'));
-    renderSlot('BOTTOM_1', bannerFor(tick + 2, 'horizontal'));
-    renderSlot('BOTTOM_2', bannerFor(tick + 8, 'horizontal'));
+    var brands = enabledBrands();
+    if (!brands.length) return;
+
+    var frame = rotationCore
+      ? rotationCore.frame(tick, brands.length)
+      : {
+          top: [tick + 0, tick + 6],
+          left: [tick + 1, tick + 4],
+          right: [tick + 7, tick + 10],
+          bottom: [tick + 2, tick + 8],
+          middle: [(tick * 5) + 0, (tick * 5) + 1, (tick * 5) + 2, (tick * 5) + 3, (tick * 5) + 4]
+        };
+
+    renderSlot('TOP_1', bannerFor(frame.top[0], 'horizontal'));
+    renderSlot('TOP_2', bannerFor(frame.top[1], 'horizontal'));
+    renderSlot('LEFT_1', bannerFor(frame.left[0], 'vertical'));
+    renderSlot('LEFT_2', bannerFor(frame.left[1], 'vertical'));
+    renderSlot('RIGHT_1', bannerFor(frame.right[0], 'vertical'));
+    renderSlot('RIGHT_2', bannerFor(frame.right[1], 'vertical'));
+    renderSlot('BOTTOM_1', bannerFor(frame.bottom[0], 'horizontal'));
+    renderSlot('BOTTOM_2', bannerFor(frame.bottom[1], 'horizontal'));
 
     for (var i = 0; i < 5; i += 1) {
-      renderSlot('MIDDLE_' + (i + 1), bannerFor((tick * 5) + i, 'middle'));
+      renderSlot('MIDDLE_' + (i + 1), bannerFor(frame.middle[i], 'middle'));
     }
 
+    currentTick = rotationCore
+      ? rotationCore.normalizeIndex(tick, brands.length)
+      : ((Number(tick) || 0) % brands.length + brands.length) % brands.length;
+
     window.requestAnimationFrame(fitSideRails);
+  }
+
+  function rotationMode() {
+    return String((config.system && config.system.rotation_mode) || 'sequential').toLowerCase();
+  }
+
+  function getIntervalMs() {
+    var seconds = config.system && config.system.rotation_interval_seconds;
+    return rotationCore ? rotationCore.intervalMs(seconds) : Math.max(1000, (Number(seconds) || 5) * 1000);
+  }
+
+  function stopRotation() {
+    if (rotationTimer !== null) {
+      window.clearInterval(rotationTimer);
+      rotationTimer = null;
+    }
+  }
+
+  function startRotation() {
+    stopRotation();
+
+    var brands = enabledBrands();
+    if (!brands.length || rotationMode() !== 'sequential') return false;
+
+    rotationTimer = window.setInterval(function () {
+      var next = rotationCore
+        ? rotationCore.nextTick(currentTick, brands.length)
+        : (currentTick + 1) % brands.length;
+
+      renderTick(next);
+    }, getIntervalMs());
+
+    return true;
   }
 
   function visibleElement(selectors) {
@@ -204,12 +257,15 @@
 
   function init() {
     mountTop();
+    renderTick(0);
     fitSideRails();
+    startRotation();
     window.requestAnimationFrame(fitSideRails);
   }
 
   window.addEventListener('resize', fitSideRails, { passive: true });
   window.addEventListener('scroll', fitSideRails, { passive: true });
+  window.addEventListener('pagehide', stopRotation, { once: true });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });
@@ -217,16 +273,17 @@
     init();
   }
 
-  /*
-   * Step 4 runtime contract. Step 5 will own the scheduler and call renderTick().
-   * Intentionally no setInterval here, so production rotation remains a separate step.
-   */
   window.THMTBannerRuntime = {
-    version: '0.4.0',
+    version: '0.5.0',
     baseline: 'V9_LOCKED',
     renderTick: renderTick,
+    startRotation: startRotation,
+    stopRotation: stopRotation,
     fitSideRails: fitSideRails,
     getBrandCount: function () { return enabledBrands().length; },
-    getRailScale: function () { return currentRailScale; }
+    getRailScale: function () { return currentRailScale; },
+    getCurrentTick: function () { return currentTick; },
+    getIntervalMs: getIntervalMs,
+    isRunning: function () { return rotationTimer !== null; }
   };
 }());
