@@ -79,7 +79,7 @@ class THMT_Banner_Renderer {
                 'config'       => $this->config,
                 'assetBaseUrl' => THMT_Banner_Config::asset_base_url(),
                 'debug'        => THMT_Banner_Config::debug_enabled(),
-                'step'         => 5,
+                'step'         => 6,
             )
         );
     }

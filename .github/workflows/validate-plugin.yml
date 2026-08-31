@@ -7,6 +7,7 @@ on:
       - "config/banners.json"
       - "scripts/validate_plugin.py"
       - "scripts/test_rotation_core.js"
+      - "scripts/test_sync_policy.php"
       - ".github/workflows/validate-plugin.yml"
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - "config/banners.json"
       - "scripts/validate_plugin.py"
       - "scripts/test_rotation_core.js"
+      - "scripts/test_sync_policy.php"
       - ".github/workflows/validate-plugin.yml"
 
 jobs:
@@ -38,5 +40,7 @@ jobs:
           node --check plugin/thmt-banner-system/assets/js/frontend.js
       - name: Rotation engine behavior
         run: node scripts/test_rotation_core.js
-      - name: Step 5 contract
+      - name: GitHub sync/cache policy
+        run: php scripts/test_sync_policy.php
+      - name: Step 6 contract
         run: python scripts/validate_plugin.py
