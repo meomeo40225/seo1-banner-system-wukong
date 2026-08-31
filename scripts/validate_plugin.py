@@ -107,4 +107,11 @@ if "backdrop-filter" in css:
 if "@media (max-width: 1200px)" not in css:
     raise SystemExit("ERROR: mobile side rail policy missing")
 
-if "https://seo1-banner-system-wukong.pages.dev/config/banners.json" not in config_php:\n    raise SystemExit("ERROR: remote config origin is not Cloudflare Pages")\nif config_php.count("https://seo1-banner-system-wukong.pages.dev/") < 3:\n    raise SystemExit("ERROR: config/assets/media must all use Cloudflare Pages")\nif "nofollow sponsored noopener noreferrer" not in js:\n    raise SystemExit("ERROR: banner outbound rel policy missing")\n\nprint("PASS: Candidate 1.0.1 + Cloudflare Pages delivery + no-TOP performance engine + SWR config.")
+if "https://seo1-banner-system-wukong.pages.dev/config/banners.json" not in config_php:
+    raise SystemExit("ERROR: remote config origin is not Cloudflare Pages")
+if config_php.count("https://seo1-banner-system-wukong.pages.dev/") < 3:
+    raise SystemExit("ERROR: config/assets/media must all use Cloudflare Pages")
+if "nofollow sponsored noopener noreferrer" not in js:
+    raise SystemExit("ERROR: banner outbound rel policy missing")
+
+print("PASS: Candidate 1.0.1 + Cloudflare Pages delivery + no-TOP performance engine + SWR config.")
