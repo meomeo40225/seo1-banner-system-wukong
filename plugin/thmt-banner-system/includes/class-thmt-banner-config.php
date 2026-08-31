@@ -233,7 +233,7 @@ class THMT_Banner_Config {
             $configured = trim( (string) ( $config['system']['media_base_url'] ?? '' ) );
         }
 
-        $candidate_media = 'https://raw.githubusercontent.com/meomeo40225/seo1-banner-system-wukong/step7-performance-engine-v070/';
+        $candidate_media = 'https://raw.githubusercontent.com/meomeo40225/seo1-banner-system-wukong/main/';
         $default = $configured ? $configured : $candidate_media;
         return trailingslashit( apply_filters( 'thmt_banner_media_base_url', $default, $config ) );
     }
