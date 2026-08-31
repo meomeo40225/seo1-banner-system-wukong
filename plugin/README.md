@@ -1,8 +1,8 @@
-# WordPress Plugin — Step 7 Performance Engine v0.7.0
+# WordPress Plugin — Step 7 Performance Engine v0.7.1
 
 Plugin source lives in `plugin/thmt-banner-system/`.
 
-## Why v0.7 exists
+## Why v0.7.1 exists
 
 The first real-site Gate B test on the previous GIF renderer exposed persistent scroll jank even after the v0.6.1 JavaScript hotfix. The dominant remaining cost was animated GIF decode/compositing across fixed/sticky slots.
 
@@ -14,7 +14,7 @@ The 42 source GIFs total about **64.13 MiB**. The generated media set is now:
 
 The source GIFs remain untouched as fallback/archive.
 
-## v0.7 performance architecture
+## v0.7.1 performance architecture
 
 - H.264 MP4 at 15 fps.
 - Full and small resolution variants per creative.
@@ -53,9 +53,9 @@ validate → last-known-good → transient
 
 This is stale-while-revalidate behavior. `wp_remote_get()` is never called inside the normal frontend `get()` path.
 
-## V9 remains locked
+## Layout override requested for v0.7.1
 
-- TOP 2 sticky
+- TOP: removed
 - LEFT 2 fixed / group-scale
 - RIGHT 2 fixed / group-scale
 - MIDDLE 5 content
@@ -67,4 +67,4 @@ This is stale-while-revalidate behavior. `wp_remote_get()` is never called insid
 
 ## Gate status
 
-Automated clean-WordPress Gate A for v0.7 passes. One real user-owned WordPress site must still pass the v0.7 retest before Step 7 can be closed and Step 8 Stable V1 can be produced.
+Automated clean-WordPress Gate A for v0.7.1 passes. One real user-owned WordPress site must still pass the v0.7.1 retest before Step 7 can be closed and Step 8 Stable V1 can be produced.
