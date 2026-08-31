@@ -68,7 +68,7 @@ required_js = [
     "rotation_interval_seconds",
     "link.href = item.url",
     "img.src = item.image",
-    "IntersectionObserver",
+    "syncMiddleVisibility",
     "requestLayout",
     "fixedHeaderBottom",
     "Keep the previous good banner",
