@@ -9,7 +9,7 @@
   var currentRailScale = 1;
   var currentTick = 0;
   var rotationTimer = null;
-  var middleObserver = null;
+  var middleZone = null;
   var middleActive = false;
   var layoutQueued = false;
   var layoutPassCount = 0;
@@ -339,6 +339,7 @@
     var rightRail = document.querySelector('.thmt-banner-side-right');
     var occlusion = updateTopOffset();
 
+    syncMiddleVisibility();
     fitHorizontalBounds();
 
     if (!topRow || !bottomRow || !leftRail || !rightRail) return;
@@ -388,41 +389,30 @@
     });
   }
 
-  function setupMiddleObserver() {
-    var zone = document.querySelector('.thmt-banner-middle-zone');
-    if (!zone) return;
+  function syncMiddleVisibility() {
+    if (!middleZone) return;
 
-    if (!('IntersectionObserver' in window)) {
+    var rect = middleZone.getBoundingClientRect();
+    var nearViewport = rect.bottom >= -300 && rect.top <= window.innerHeight + 300;
+
+    if (nearViewport && !middleActive) {
       middleActive = true;
       renderMiddle(currentFrame(currentTick, enabledBrands().length));
-      return;
+    } else if (!nearViewport && middleActive) {
+      middleActive = false;
+      clearMiddle();
     }
+  }
 
-    middleObserver = new IntersectionObserver(function (entries) {
-      var visible = entries.some(function (entry) {
-        return entry.isIntersecting || entry.intersectionRatio > 0;
-      });
-
-      if (visible && !middleActive) {
-        middleActive = true;
-        renderMiddle(currentFrame(currentTick, enabledBrands().length));
-      } else if (!visible && middleActive) {
-        middleActive = false;
-        clearMiddle();
-      }
-    }, {
-      root: null,
-      rootMargin: '300px 0px',
-      threshold: 0
-    });
-
-    middleObserver.observe(zone);
+  function setupMiddleVisibility() {
+    middleZone = document.querySelector('.thmt-banner-middle-zone');
+    syncMiddleVisibility();
   }
 
   function init() {
     mountTop();
     renderTick(0);
-    setupMiddleObserver();
+    setupMiddleVisibility();
     fitSideRails();
     startRotation();
     requestLayout();
@@ -430,10 +420,7 @@
 
   window.addEventListener('resize', requestLayout, { passive: true });
   window.addEventListener('scroll', requestLayout, { passive: true });
-  window.addEventListener('pagehide', function () {
-    stopRotation();
-    if (middleObserver) middleObserver.disconnect();
-  }, { once: true });
+  window.addEventListener('pagehide', stopRotation, { once: true });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });
