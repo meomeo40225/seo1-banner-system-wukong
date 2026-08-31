@@ -54,7 +54,7 @@ jobs:
 
             const state = await page.evaluate(() => {
               const slots = [...document.querySelectorAll('[data-slot]')];
-              const media = [...document.querySelectorAll('.thmt-banner-system video source, .thmt-banner-system img')]
+              const media = [...document.querySelectorAll('[data-slot] video source, [data-slot] img')]
                 .map(n => n.src || n.currentSrc || '');
               const links = [...document.querySelectorAll('a.thmt-banner-link')].map(a => ({
                 href: a.href,
