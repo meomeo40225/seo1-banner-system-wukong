@@ -1,0 +1,113 @@
+name: Step 9 Live Site Check
+
+on:
+  push:
+    branches:
+      - step9-private-delivery-v101
+    paths:
+      - ".github/workflows/step9-live-site-check.yml"
+  workflow_dispatch:
+
+jobs:
+  live-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: HTTP reachability
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error --max-time 30 \
+            -A "Mozilla/5.0 THMT-Live-Acceptance" \
+            -D /tmp/headers.txt \
+            -o /tmp/live.html \
+            https://methotrexate.us.org/
+          head -n 30 /tmp/headers.txt
+          echo "HTML bytes: $(wc -c < /tmp/live.html)"
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Browser live acceptance
+        run: |
+          cat > /tmp/live-check.cjs <<'EOF'
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+            const errors = [];
+            page.on('console', msg => {
+              if (msg.type() === 'error') errors.push('console: ' + msg.text());
+            });
+            page.on('pageerror', err => errors.push('pageerror: ' + err.message));
+
+            await page.goto('https://methotrexate.us.org/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await page.waitForFunction(() => window.THMTBannerRuntime, null, { timeout: 60000 });
+            await page.waitForTimeout(3000);
+
+            const state = await page.evaluate(() => {
+              const slots = [...document.querySelectorAll('[data-slot]')];
+              const media = [...document.querySelectorAll('.thmt-banner-system video source, .thmt-banner-system img')]
+                .map(n => n.src || n.currentSrc || '');
+              const links = [...document.querySelectorAll('a.thmt-banner-link')].map(a => ({
+                href: a.href,
+                rel: a.rel,
+                target: a.target
+              }));
+
+              return {
+                version: window.THMTBannerRuntime.version,
+                brandCount: window.THMTBannerRuntime.getBrandCount(),
+                interval: window.THMTBannerRuntime.getIntervalMs(),
+                slots: slots.length,
+                topSlots: document.querySelectorAll('[data-slot^="TOP_"]').length,
+                media,
+                links,
+                htmlHasRawGithub: document.documentElement.innerHTML.includes('raw.githubusercontent.com'),
+                htmlHasPages: document.documentElement.innerHTML.includes('seo1-banner-system-wukong.pages.dev')
+              };
+            });
+
+            console.log(JSON.stringify({ state, errors }, null, 2));
+
+            if (state.version !== '1.0.1') throw new Error('Expected runtime 1.0.1, got ' + state.version);
+            if (state.brandCount !== 14) throw new Error('Expected 14 brands, got ' + state.brandCount);
+            if (state.interval !== 5000) throw new Error('Expected 5000 ms rotation, got ' + state.interval);
+            if (state.slots !== 11) throw new Error('Expected 11 slots, got ' + state.slots);
+            if (state.topSlots !== 0) throw new Error('TOP slots must be absent');
+            if (state.media.length < 6) throw new Error('Expected live banner media');
+            if (!state.media.every(u => u.includes('seo1-banner-system-wukong.pages.dev/'))) {
+              throw new Error('Not all live banner media use Cloudflare Pages');
+            }
+            if (!state.links.length) throw new Error('Expected clickable banner links');
+            if (!state.links.every(x => x.rel.includes('nofollow') && x.rel.includes('sponsored') && x.rel.includes('noopener') && x.rel.includes('noreferrer'))) {
+              throw new Error('Outbound banner rel policy mismatch');
+            }
+            if (state.links.some(x => x.target !== '_blank')) throw new Error('Banner link target mismatch');
+            if (state.htmlHasRawGithub) throw new Error('Live DOM still contains raw.githubusercontent.com');
+            if (!state.htmlHasPages) throw new Error('Live DOM does not contain Pages delivery origin');
+
+            await page.screenshot({ path: 'live-site-step9.png', fullPage: true });
+            await browser.close();
+          })().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          EOF
+          node /tmp/live-check.cjs
+
+      - name: Upload live screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step9-live-site-check
+          path: live-site-step9.png
+          if-no-files-found: ignore
+          retention-days: 7
