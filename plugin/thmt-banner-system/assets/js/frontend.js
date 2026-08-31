@@ -269,7 +269,7 @@
     var poster = new Image();
     poster.src = media.poster;
     poster.decoding = 'async';
-    poster.loading = item.kind === 'middle' ? 'lazy' : 'eager';
+    poster.loading = 'eager';
 
     var commit = function () {
       if (slotTokens[slotId] !== token) return;
