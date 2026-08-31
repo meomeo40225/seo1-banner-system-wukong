@@ -36,7 +36,7 @@ jobs:
 
       - name: Browser live acceptance
         run: |
-          cat > /tmp/live-check.cjs <<'EOF'
+          cat > live-check.cjs <<'EOF'
           const { chromium } = require('playwright');
 
           (async () => {
@@ -101,7 +101,7 @@ jobs:
             process.exit(1);
           });
           EOF
-          node /tmp/live-check.cjs
+          node live-check.cjs
 
       - name: Upload live screenshot
         if: always()
