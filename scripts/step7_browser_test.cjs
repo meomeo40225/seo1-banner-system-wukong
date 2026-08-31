@@ -99,7 +99,11 @@ if (!url) {
       document.getElementById('step7-fixed-header')?.remove();
       document.getElementById('step7-extra-scroll')?.remove();
       const middle = document.querySelector('.thmt-banner-middle-zone');
-      middle.scrollIntoView({ block: 'center' });
+      const rect = middle.getBoundingClientRect();
+      const target = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2);
+      window.scrollTo(0, Math.max(0, target));
+      window.dispatchEvent(new Event('scroll'));
+      window.THMTBannerRuntime.syncMiddleVisibility();
       window.THMTBannerRuntime.requestLayout();
     });
 
