@@ -436,6 +436,7 @@
     stopRotation: stopRotation,
     fitSideRails: fitSideRails,
     requestLayout: requestLayout,
+    syncMiddleVisibility: syncMiddleVisibility,
     getBrandCount: function () { return enabledBrands().length; },
     getRailScale: function () { return currentRailScale; },
     getCurrentTick: function () { return currentTick; },
