@@ -5,14 +5,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Central GitHub config provider.
+ * Central remote config provider.
  *
  * Performance v0.7 uses stale-while-revalidate: frontend requests always use
  * local state immediately. Network refreshes happen only in WP-Cron.
  */
 class THMT_Banner_Config {
     const BASELINE          = 'V9_LOCKED';
-    const REMOTE_CONFIG_URL = 'https://raw.githubusercontent.com/meomeo40225/seo1-banner-system-wukong/main/config/banners.json';
+    const REMOTE_CONFIG_URL = 'https://seo1-banner-system-wukong.pages.dev/config/banners.json';
 
     const TRANSIENT_CONFIG = 'thmt_banner_config_cache_v1';
     const TRANSIENT_LOCK   = 'thmt_banner_config_sync_lock_v1';
@@ -195,7 +195,7 @@ class THMT_Banner_Config {
             }
 
             update_option( self::OPTION_LAST_GOOD, $data, false );
-            self::record_success_meta( $response, $meta, $now, 'github' );
+            self::record_success_meta( $response, $meta, $now, 'pages' );
             self::cache_candidate( $data );
             self::$runtime_config = null;
             return $data;
@@ -216,13 +216,13 @@ class THMT_Banner_Config {
     }
 
     public static function asset_base_url() {
-        $default = 'https://raw.githubusercontent.com/meomeo40225/seo1-banner-system-wukong/main/';
+        $default = 'https://seo1-banner-system-wukong.pages.dev/';
         return trailingslashit( apply_filters( 'thmt_banner_asset_base_url', $default ) );
     }
 
     /**
      * Base URL for optimized MP4/WebP media.
-     * Optional system.media_base_url can point to a CDN/R2 origin later.
+     * Optional system.media_base_url can override the default Cloudflare Pages origin.
      *
      * @param array|null $config Active config.
      * @return string
@@ -233,7 +233,7 @@ class THMT_Banner_Config {
             $configured = trim( (string) ( $config['system']['media_base_url'] ?? '' ) );
         }
 
-        $candidate_media = 'https://raw.githubusercontent.com/meomeo40225/seo1-banner-system-wukong/main/';
+        $candidate_media = 'https://seo1-banner-system-wukong.pages.dev/';
         $default = $configured ? $configured : $candidate_media;
         return trailingslashit( apply_filters( 'thmt_banner_media_base_url', $default, $config ) );
     }

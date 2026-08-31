@@ -1,9 +1,9 @@
-name: Step 7 WordPress acceptance
+name: Step 9 Private Delivery acceptance
 
 on:
   push:
     branches:
-      - step7-no-top-v071
+      - step7-no-top-v071\n      - step9-private-delivery-v101
     paths:
       - "plugin/**"
       - "config/**"
@@ -51,12 +51,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Build Step 7 v0.7.1 no-TOP candidate ZIP
+      - name: Build Step 9 v1.0.1 private-delivery candidate ZIP
         run: |
           mkdir -p dist
           cd plugin
-          zip -qr "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-no-top-v0.7.1.zip" thmt-banner-system
-          unzip -l "$GITHUB_WORKSPACE/dist/thmt-banner-system-step7-no-top-v0.7.1.zip" | head -n 40
+          zip -qr "$GITHUB_WORKSPACE/dist/thmt-banner-system-private-delivery-v1.0.1.zip" thmt-banner-system
+          unzip -l "$GITHUB_WORKSPACE/dist/thmt-banner-system-private-delivery-v1.0.1.zip" | head -n 40
 
       - name: Install WP-CLI
         run: |
@@ -81,7 +81,7 @@ jobs:
           wp core install \
             --path=/tmp/step7-wp \
             --url=http://127.0.0.1:8080 \
-            --title="THMT Step 7 Performance" \
+            --title="THMT Step 9 Private Delivery" \
             --admin_user=step7admin \
             --admin_password=step7-password-not-secret \
             --admin_email=step7@example.invalid \
@@ -119,20 +119,20 @@ jobs:
               fwrite(STDERR, "Frontend config read blocked too long: {$elapsed}\n");
               exit(1);
             }
-            echo "PASS: local config returned in {$elapsed}s without waiting on GitHub\n";
+            echo "PASS: local config returned in {$elapsed}s without waiting on remote HTTP\n";
           ' --path=/tmp/step7-wp --allow-root
 
-      - name: Force one GitHub refresh and verify last-known-good
+      - name: Force one Pages refresh and verify last-known-good
         run: |
           wp eval '
             $config = THMT_Banner_Config::refresh_remote(true);
             $meta = get_option("thmt_banner_sync_meta_v1", array());
             $good = get_option("thmt_banner_last_good_config_v1", array());
             if (empty($meta["last_success_at"]) || count($good["brands"] ?? array()) !== 14) {
-              fwrite(STDERR, "GitHub refresh did not create last-known-good\n");
+              fwrite(STDERR, "Pages refresh did not create last-known-good\n");
               exit(1);
             }
-            echo "PASS: GitHub refresh source=" . ($meta["source"] ?? "unknown") . "\n";
+            echo "PASS: Pages refresh source=" . ($meta["source"] ?? "unknown") . "\n";
           ' --path=/tmp/step7-wp --allow-root
 
       - name: Verify network failure preserves last-known-good
@@ -161,8 +161,8 @@ jobs:
         run: |
           POST_ID=$(wp post create \
             --path=/tmp/step7-wp \
-            --post_title="THMT Step 7 Performance Acceptance" \
-            --post_name=thmt-step7-performance \
+            --post_title="THMT Step 9 Private Delivery Acceptance" \
+            --post_name=thmt-step9-private-delivery \
             --post_status=publish \
             --post_type=post \
             --post_content='<p>Paragraph one.</p><p>Paragraph two.</p><p>Paragraph three.</p><p>Paragraph four.</p>' \
@@ -196,7 +196,7 @@ jobs:
       - name: Browser performance acceptance
         env:
           STEP7_URL: http://127.0.0.1:8080/?p=${{ steps.fixture.outputs.post_id }}
-          STEP7_SCREENSHOT: ${{ github.workspace }}/dist/step7-no-top-v071.png
+          STEP7_SCREENSHOT: ${{ github.workspace }}/dist/step9-private-delivery-v101.png
         run: node scripts/step7_browser_test.cjs
 
       - name: Show diagnostics on failure
@@ -207,12 +207,12 @@ jobs:
           echo "===== Page excerpt ====="
           sed -n '1,200p' /tmp/step7-page.html || true
 
-      - name: Upload v0.7.1 no-TOP candidate + screenshot
+      - name: Upload v1.0.1 private-delivery candidate + screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: thmt-banner-step7-no-top-v071
+          name: thmt-banner-private-delivery-v101
           path: |
-            dist/thmt-banner-system-step7-no-top-v0.7.1.zip
-            dist/step7-no-top-v071.png
+            dist/thmt-banner-system-private-delivery-v1.0.1.zip
+            dist/step9-private-delivery-v101.png
           if-no-files-found: error
           retention-days: 14

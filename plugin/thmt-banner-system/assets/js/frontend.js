@@ -684,7 +684,7 @@
   }
 
   window.THMTBannerRuntime = {
-    version: '1.0.0',
+    version: '1.0.1',
     baseline: 'V9_LOCKED',
     renderTick: renderTick,
     startRotation: startRotation,

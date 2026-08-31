@@ -35,7 +35,7 @@ if root_cfg.get("system", {}).get("github_sync_interval_seconds") != 300:
     raise SystemExit("ERROR: sync interval drift")
 
 main_php = (PLUGIN / "thmt-banner-system.php").read_text(encoding="utf-8")
-for marker in ["1.0.0", "THMT_Banner_Config::register()", "register_activation_hook", "register_deactivation_hook"]:
+for marker in ["1.0.1", "THMT_Banner_Config::register()", "register_activation_hook", "register_deactivation_hook"]:
     if marker not in main_php:
         raise SystemExit(f"ERROR: bootstrap marker missing: {marker}")
 
@@ -88,7 +88,7 @@ for marker in [
     "resumeVideos",
     "desktopMql",
     "gif-fallback",
-    "1.0.0",
+    "1.0.1",
 ]:
     if marker not in js:
         raise SystemExit(f"ERROR: performance engine marker missing: {marker}")
@@ -107,4 +107,11 @@ if "backdrop-filter" in css:
 if "@media (max-width: 1200px)" not in css:
     raise SystemExit("ERROR: mobile side rail policy missing")
 
-print("PASS: Stable V1 1.0.0 + no-TOP performance engine + LEFT/RIGHT/MIDDLE/BOTTOM + SWR config.")
+if "https://seo1-banner-system-wukong.pages.dev/config/banners.json" not in config_php:
+    raise SystemExit("ERROR: remote config origin is not Cloudflare Pages")
+if config_php.count("https://seo1-banner-system-wukong.pages.dev/") < 3:
+    raise SystemExit("ERROR: config/assets/media must all use Cloudflare Pages")
+if "nofollow sponsored noopener noreferrer" not in js:
+    raise SystemExit("ERROR: banner outbound rel policy missing")
+
+print("PASS: Candidate 1.0.1 + Cloudflare Pages delivery + no-TOP performance engine + SWR config.")

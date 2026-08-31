@@ -2,12 +2,12 @@
 Contributors: thmt
 Requires at least: 6.0
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: Proprietary
 
 GitHub-driven banner renderer with the TOP zone removed.
 
-== Stable V1 — 1.0.0 ==
+== Private Delivery Candidate — 1.0.1 ==
 * Stable layout: TOP removed / LEFT 2 / RIGHT 2 / MIDDLE 5 / BOTTOM 2.
 * Replaces normal animated-GIF rendering with generated H.264 MP4 media.
 * Uses 15 fps H.264, full/small variants and WebP poster frames.
@@ -19,12 +19,12 @@ GitHub-driven banner renderer with the TOP zone removed.
 * Geometry work is removed from the normal scroll path.
 * ResizeObserver/MutationObserver handle geometry and sticky-header changes.
 * Next rotation media is warmed gradually during idle time.
-* Frontend config reads are stale-while-revalidate and never block on GitHub HTTP.
-* Supports optional HTTPS media_base_url for a future CDN/R2 origin.
+* Frontend config reads are stale-while-revalidate and never block on remote HTTP.
+* Uses Cloudflare Pages as the public config/media/assets delivery origin.
 * Adaptive profiles: full, lite and poster.
 * TOP slots are not rendered or downloaded.
 * Empty brand URLs remain non-clickable.
 
 == Release status ==
 * Step 7 clean-WordPress and real-site acceptance passed.
-* Stable V1 package is produced from this exact source tree.
+* Candidate 1.0.1 keeps Stable V1 behavior while moving public delivery off GitHub raw URLs.
