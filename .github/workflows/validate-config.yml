@@ -1,13 +1,15 @@
-name: Validate banner config
+name: Validate banner config and assets
 
 on:
   push:
     paths:
       - "config/**"
+      - "assets/**"
       - "scripts/validate_config.py"
   pull_request:
     paths:
       - "config/**"
+      - "assets/**"
       - "scripts/validate_config.py"
 
 jobs:
