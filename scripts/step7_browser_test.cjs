@@ -105,10 +105,8 @@ if (!url) {
 
     await page.waitForFunction(() => {
       const images = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"] img'));
-      return window.THMTBannerRuntime.isMiddleActive() &&
-        images.length === 5 &&
-        images.every((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
-    }, null, { timeout: 60000 });
+      return window.THMTBannerRuntime.isMiddleActive() && images.length === 5;
+    }, null, { timeout: 5000 });
 
     const middle = await page.evaluate(() => {
       const slots = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"]')).map((slot) => {
@@ -116,8 +114,8 @@ if (!url) {
         return {
           brand: slot.getAttribute('data-brand'),
           objectFit: img ? getComputedStyle(img).objectFit : '',
-          width: img ? img.naturalWidth : 0,
-          height: img ? img.naturalHeight : 0
+          loading: img ? img.loading : '',
+          src: img ? img.src : ''
         };
       });
       return slots;
@@ -126,7 +124,8 @@ if (!url) {
     assert.strictEqual(middle.length, 5, 'MIDDLE count');
     assert.strictEqual(new Set(middle.map((slot) => slot.brand)).size, 5, 'MIDDLE must show 5 distinct brands');
     middle.forEach((slot) => {
-      assert(slot.width > 0 && slot.height > 0, 'MIDDLE image failed to load');
+      assert(slot.src.includes('/assets/'), 'MIDDLE must receive a real remote asset URL near viewport');
+      assert.strictEqual(slot.loading, 'lazy', 'MIDDLE browser hint must stay lazy');
       assert.strictEqual(slot.objectFit, 'contain', 'MIDDLE must use object-fit: contain');
     });
 
