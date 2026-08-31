@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: THMT Banner System
- * Description: Renders the locked V9 banner layout from the centralized SEO1 banner configuration.
- * Version: 0.4.0
+ * Description: Renders and rotates the locked V9 banner layout from the centralized SEO1 banner configuration.
+ * Version: 0.5.0
  * Author: THMT
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'THMT_BANNER_SYSTEM_VERSION', '0.4.0' );
+define( 'THMT_BANNER_SYSTEM_VERSION', '0.5.0' );
 define( 'THMT_BANNER_SYSTEM_FILE', __FILE__ );
 define( 'THMT_BANNER_SYSTEM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'THMT_BANNER_SYSTEM_URL', plugin_dir_url( __FILE__ ) );

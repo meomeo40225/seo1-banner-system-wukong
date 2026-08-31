@@ -10,6 +10,7 @@ required = [
     plugin / "includes" / "class-thmt-banner-config.php",
     plugin / "includes" / "class-thmt-banner-renderer.php",
     plugin / "assets" / "css" / "frontend.css",
+    plugin / "assets" / "js" / "rotation-core.js",
     plugin / "assets" / "js" / "frontend.js",
     plugin / "config" / "banners.json",
     plugin / "readme.txt",
@@ -28,6 +29,12 @@ if plugin_cfg.get("layout", {}).get("baseline") != "V9_LOCKED":
 if len(plugin_cfg.get("brands", [])) != 14:
     raise SystemExit("ERROR: plugin snapshot must contain 14 brands")
 
+system = plugin_cfg.get("system", {})
+if system.get("rotation_mode") != "sequential":
+    raise SystemExit("ERROR: Step 5 requires sequential rotation mode")
+if system.get("rotation_interval_seconds") != 5:
+    raise SystemExit("ERROR: V9 rotation interval must currently be 5 seconds")
+
 layout = plugin_cfg["layout"]
 expected_counts = {"top": 2, "left": 2, "right": 2, "middle": 5, "bottom": 2}
 for key, expected in expected_counts.items():
@@ -42,16 +49,27 @@ for slot in [
 ]:
     if slot not in renderer:
         raise SystemExit(f"ERROR: renderer missing slot marker {slot}")
+if "thmt-banner-rotation-core" not in renderer:
+    raise SystemExit("ERROR: rotation core is not enqueued before frontend.js")
 
 js = (plugin / "assets" / "js" / "frontend.js").read_text(encoding="utf-8")
-if "window.THMTBannerRuntime" not in js or "renderTick" not in js:
-    raise SystemExit("ERROR: Step 5 runtime contract is missing")
-if "setInterval(" in js:
-    raise SystemExit("ERROR: Step 4 must not start production rotation")
+required_js = [
+    "window.THMTBannerRuntime",
+    "renderTick",
+    "startRotation",
+    "stopRotation",
+    "window.setInterval",
+    "rotation_interval_seconds",
+    "link.href = item.url",
+    "img.src = item.image",
+]
+for marker in required_js:
+    if marker not in js:
+        raise SystemExit(f"ERROR: Step 5 frontend marker missing: {marker}")
 
 all_php = "\n".join(p.read_text(encoding="utf-8") for p in plugin.rglob("*.php"))
 if "wp_remote_get(" in all_php or "wp_remote_request(" in all_php:
-    raise SystemExit("ERROR: Step 4 must not implement remote GitHub sync/cache")
+    raise SystemExit("ERROR: Step 5 must not implement remote GitHub sync/cache")
 
 css = (plugin / "assets" / "css" / "frontend.css").read_text(encoding="utf-8")
 if "object-fit: contain" not in css:
@@ -59,4 +77,4 @@ if "object-fit: contain" not in css:
 if ".thmt-banner-side-rail" not in css:
     raise SystemExit("ERROR: side rail styling missing")
 
-print("PASS: Step 4 plugin structure + V9 counts + config snapshot + no Step5/Step6 leakage.")
+print("PASS: Step 5 plugin + V9 layout + sequential scheduler + no Step6 leakage.")

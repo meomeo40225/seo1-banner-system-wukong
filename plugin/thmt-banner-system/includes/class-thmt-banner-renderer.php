@@ -55,9 +55,17 @@ class THMT_Banner_Renderer {
         );
 
         wp_enqueue_script(
+            'thmt-banner-rotation-core',
+            THMT_BANNER_SYSTEM_URL . 'assets/js/rotation-core.js',
+            array(),
+            THMT_BANNER_SYSTEM_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
             'thmt-banner-frontend',
             THMT_BANNER_SYSTEM_URL . 'assets/js/frontend.js',
-            array(),
+            array( 'thmt-banner-rotation-core' ),
             THMT_BANNER_SYSTEM_VERSION,
             true
         );
@@ -71,7 +79,7 @@ class THMT_Banner_Renderer {
                 'config'       => $this->config,
                 'assetBaseUrl' => THMT_Banner_Config::asset_base_url(),
                 'debug'        => THMT_Banner_Config::debug_enabled(),
-                'step'         => 4,
+                'step'         => 5,
             )
         );
     }

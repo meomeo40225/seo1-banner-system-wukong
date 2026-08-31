@@ -6,12 +6,14 @@ on:
       - "plugin/**"
       - "config/banners.json"
       - "scripts/validate_plugin.py"
+      - "scripts/test_rotation_core.js"
       - ".github/workflows/validate-plugin.yml"
   pull_request:
     paths:
       - "plugin/**"
       - "config/banners.json"
       - "scripts/validate_plugin.py"
+      - "scripts/test_rotation_core.js"
       - ".github/workflows/validate-plugin.yml"
 
 jobs:
@@ -31,6 +33,10 @@ jobs:
       - name: PHP syntax
         run: find plugin/thmt-banner-system -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: JavaScript syntax
-        run: node --check plugin/thmt-banner-system/assets/js/frontend.js
-      - name: Step 4 contract
+        run: |
+          node --check plugin/thmt-banner-system/assets/js/rotation-core.js
+          node --check plugin/thmt-banner-system/assets/js/frontend.js
+      - name: Rotation engine behavior
+        run: node scripts/test_rotation_core.js
+      - name: Step 5 contract
         run: python scripts/validate_plugin.py

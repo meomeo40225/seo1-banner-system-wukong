@@ -19,15 +19,13 @@ WordPress plugin sẽ sync config từ GitHub, cache local, render layout V9 và
 - [x] 42 selected banner assets
 - [x] Brand URLs để trống để bổ sung sau
 - [x] WordPress plugin renderer (Step 4)
-- [ ] Rotation engine production
+- [x] Rotation engine production (Step 5)
 - [ ] GitHub sync/cache engine
 - [ ] Test thật trên 1 website
 - [ ] Plugin ZIP release
 
-## Step 4
-Plugin source: `plugin/thmt-banner-system/`.
-
-Step 4 render được V9 với TOP 2, LEFT 2, RIGHT 2, MIDDLE 5 và BOTTOM 2; giữ `object-fit: contain`, side-rail group scaling và rule URL trống = không clickable. Rotation scheduler vẫn để Step 5, remote GitHub sync/cache vẫn để Step 6.
+## Step 5
+Rotation engine chạy sequential trên đủ 14 brand. Chu kỳ lấy từ `banners.json` (hiện là 5 giây), không hard-code logic brand vào scheduler. Mỗi lần đổi slot, ảnh và URL lấy từ cùng một brand object nên không có trạng thái ảnh A nhưng link B.
 
 ## Rule link
 Mỗi brand chỉ có một field `url`. Đổi URL một brand ở `config/banners.json` sẽ áp dụng cho mọi creative/slot của brand đó.
