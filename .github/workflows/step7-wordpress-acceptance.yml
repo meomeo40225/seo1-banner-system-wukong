@@ -180,7 +180,7 @@ jobs:
             >/tmp/step7-wp-server.log 2>&1 &
 
           for i in $(seq 1 30); do
-            if curl -fsS "http://127.0.0.1:8080/?p=\${{ steps.fixture.outputs.post_id }}" >/tmp/step7-page.html; then
+            if curl -fsS "http://127.0.0.1:8080/?p=${{ steps.fixture.outputs.post_id }}" >/tmp/step7-page.html; then
               exit 0
             fi
             sleep 1
@@ -195,8 +195,8 @@ jobs:
 
       - name: Browser performance acceptance
         env:
-          STEP7_URL: http://127.0.0.1:8080/?p=\${{ steps.fixture.outputs.post_id }}
-          STEP7_SCREENSHOT: \${{ github.workspace }}/dist/step7-performance-v070.png
+          STEP7_URL: http://127.0.0.1:8080/?p=${{ steps.fixture.outputs.post_id }}
+          STEP7_SCREENSHOT: ${{ github.workspace }}/dist/step7-performance-v070.png
         run: node scripts/step7_browser_test.cjs
 
       - name: Show diagnostics on failure
