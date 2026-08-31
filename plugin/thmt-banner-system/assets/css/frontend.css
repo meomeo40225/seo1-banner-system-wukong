@@ -68,28 +68,6 @@
   aspect-ratio: 728 / 90;
 }
 
-/* V9 TOP — sticky, below any detected theme sticky/fixed header. */
-.thmt-banner-top-row {
-  position: sticky;
-  top: var(--thmt-sticky-top, 8px);
-  z-index: var(--thmt-z-top);
-  display: none;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  width: 100%;
-  margin: 0 0 12px;
-  padding: 6px;
-  background: #fff;
-  border: 1px solid #e3e8ef;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(15,23,42,.08);
-  contain: layout paint;
-}
-
-.thmt-banner-top-row.is-mounted {
-  display: grid;
-}
-
 /* V9 sides — media is never mounted under 1201px. */
 .thmt-banner-side-rail {
   position: fixed;
@@ -166,7 +144,6 @@
 }
 
 @media (max-width: 760px) {
-  .thmt-banner-top-row,
   .thmt-banner-bottom-row {
     grid-template-columns: minmax(0, 1fr);
   }
