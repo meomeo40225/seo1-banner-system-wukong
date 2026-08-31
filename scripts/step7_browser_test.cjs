@@ -55,9 +55,13 @@ async function waitForGlobalMedia(page, expectedVideos) {
     assert.strictEqual(await page.locator('#thmt-banner-top').count(), 0, 'TOP container must not exist');
     assert(initial.mediaKinds.some((x) => x.startsWith('mp4')));
 
-    const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name));
-    assert(resources.some((x) => x.includes('/media/') && x.endsWith('.mp4')), 'MP4 media must load');
-    assert(!resources.some((x) => x.includes('/assets/') && x.endsWith('.gif')), 'GIF should not load in normal v0.7 path');
+    const mediaSources = await page.evaluate(() => ({
+      mp4: Array.from(document.querySelectorAll('video source')).map((s) => s.src),
+      gifFallbacks: Array.from(document.querySelectorAll('.thmt-banner-gif-fallback')).map((img) => img.src)
+    }));
+    assert(mediaSources.mp4.length >= 6, 'Desktop global slots must point at MP4 media');
+    assert(mediaSources.mp4.every((x) => x.includes('/media/') && x.endsWith('.mp4')), 'Normal media source must be optimized MP4');
+    assert.strictEqual(mediaSources.gifFallbacks.length, 0, 'GIF should not load in normal v0.7.1 path');
 
     await page.evaluate(() => window.dispatchEvent(new Event('scroll')));
     await page.waitForTimeout(250);
