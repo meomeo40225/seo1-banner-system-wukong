@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "config_version": "1.0.0-draft",
+  "system": {
+    "enabled": true,
+    "rotation_interval_seconds": 5,
+    "rotation_mode": "sequential",
+    "github_sync_interval_seconds": 300,
+    "fit_mode": "contain",
+    "allow_hide_controls": false
+  },
+  "layout": {
+    "baseline": "V9_LOCKED",
+    "top": {"visible_count": 2,"follow_scroll": true,"position_mode": "sticky"},
+    "left": {"visible_count": 2,"follow_scroll": true,"position_mode": "fixed","auto_scale_group": true},
+    "right": {"visible_count": 2,"follow_scroll": true,"position_mode": "fixed","auto_scale_group": true},
+    "middle": {"visible_count": 5,"follow_scroll": false,"position_mode": "content"},
+    "bottom": {"visible_count": 2,"follow_scroll": true,"position_mode": "fixed"}
+  },
+  "asset_rules": {
+    "never_stretch": true,
+    "never_crop": true,
+    "preserve_aspect_ratio": true,
+    "preferred_sizes": {"horizontal": "728x90","vertical": "150x500","middle": "600x500"},
+    "allow_compatible_fallback": true
+  },
+  "brands": [
+    {"id":"tot","name":"TOT","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/tot/TOT_CPD_SPORT_728x90-LACH.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/tot/TOT_CPD_SPORT_160x600.gif","size":"160x600","compatibility":"fallback"},"middle":{"file":"assets/tot/TOT_CPD_SPORT_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"topclub","name":"TopClub","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/topclub/CPD_topclub_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/topclub/CPD_topclub_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/topclub/CPD_topclub_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"va","name":"VA","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/va/CPD_VA_ASEANCUP26_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/va/CPD_VA_ASEANCUP26_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/va/CPD_VA_ASEANCUP26_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"big-win","name":"BIG WIN","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/big-win/CPD_BIG_WIN_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/big-win/CPD_BIG_WIN_200x300.gif","size":"200x300","compatibility":"fallback"},"middle":{"file":"assets/big-win/CPD_BIG_WIN_200x200.gif","size":"200x200","compatibility":"fallback"}}},
+    {"id":"db","name":"DB","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/db/DB_CPD_ASEANCUP_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/db/DB_CPD_ASEANCUP_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/db/DB_CPD_ASEANCUP_500x500.gif","size":"500x500","compatibility":"fallback"}}},
+    {"id":"nbet","name":"NBET","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/nbet/NBET_CPD_ASEANCUP_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/nbet/NBET_CPD_ASEANCUP_160x500.gif","size":"160x500","compatibility":"fallback"},"middle":{"file":"assets/nbet/NBET_CPD_ASEANCUP_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"ox","name":"OX","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/ox/OX_CPD_ASEANCUP_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/ox/OX_CPD_ASEANCUP_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/ox/OX_CPD_ASEANCUP_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"one88","name":"One88","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/one88/One88_CPD_BMW_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/one88/One88_CPD_BMW_160x600.gif","size":"160x600","compatibility":"fallback"},"middle":{"file":"assets/one88/One88_CPD_BMW_300x250.gif","size":"300x250","compatibility":"fallback"}}},
+    {"id":"fb","name":"FB","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/fb/FB_CPD_SPORT_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/fb/FB_CPD_SPORT_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/fb/FB_CPD_SPORT_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"11bet","name":"11BET","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/11bet/CPD_11BET_PL_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/11bet/CPD_11BET_PL_160x600.gif","size":"160x600","compatibility":"fallback"},"middle":{"file":"assets/11bet/CPD_11BET_PL_500x500.gif","size":"500x500","compatibility":"fallback"}}},
+    {"id":"lucky","name":"Lucky","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/lucky/Lucky-CPD-728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/lucky/Lucky-CPD-150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/lucky/Lucky-CPD-400x400.gif","size":"400x400","compatibility":"fallback"}}},
+    {"id":"ld","name":"LD","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/ld/LD_CPD_EVENT_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/ld/LD_CPD_EVENT_160x500.gif","size":"160x500","compatibility":"fallback"},"middle":{"file":"assets/ld/LD_CPD_EVENT_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"388bet","name":"388BET","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/388bet/388BET_CPD-SPORT-3-25_728x90.gif","size":"728x90","compatibility":"exact"},"vertical":{"file":"assets/388bet/388BET_CPD-SPORT-3-25_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/388bet/388BET_CPD-SPORT-3-25_600x500.gif","size":"600x500","compatibility":"exact"}}},
+    {"id":"fa","name":"FA","enabled":true,"url":"","assets":{"horizontal":{"file":"assets/fa/FA_GAME_720x90.gif","size":"720x90","compatibility":"fallback"},"vertical":{"file":"assets/fa/FA_GAME_150x500.gif","size":"150x500","compatibility":"exact"},"middle":{"file":"assets/fa/FA_GAME_600x500.gif","size":"600x500","compatibility":"exact"}}}
+  ]
+}
