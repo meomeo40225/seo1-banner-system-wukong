@@ -111,7 +111,13 @@
 
     img.src = item.image;
 
-    if (img.complete && img.naturalWidth > 0) {
+    /*
+     * Empty lazy placeholders (MIDDLE) may attach the pending image immediately.
+     * Existing visible banners stay load-first so rotation never flashes black.
+     */
+    if (!existing) {
+      commitSlot(el, slotId, item, img, token);
+    } else if (img.complete && img.naturalWidth > 0) {
       commitSlot(el, slotId, item, img, token);
     }
   }
