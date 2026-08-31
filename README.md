@@ -10,22 +10,24 @@ GitHub là source-of-truth cho:
 - layout/config
 - rotation settings
 
-WordPress plugin sẽ sync config từ GitHub, cache local, render layout V9 và tự rotation.
+WordPress plugin sync config từ GitHub, cache local, render layout V9 và tự rotation.
 
 ## Trạng thái hiện tại
 - [x] V9 layout locked
 - [x] Schema `banners.json`
-- [x] 14 brands
-- [x] 42 selected banner assets
+- [x] 14 initial brands
+- [x] 42 selected initial banner assets
 - [x] Brand URLs để trống để bổ sung sau
 - [x] WordPress plugin renderer (Step 4)
 - [x] Rotation engine production (Step 5)
-- [ ] GitHub sync/cache engine
+- [x] GitHub sync/cache engine (Step 6)
 - [ ] Test thật trên 1 website
 - [ ] Plugin ZIP release
 
-## Step 5
-Rotation engine chạy sequential trên đủ 14 brand. Chu kỳ lấy từ `banners.json` (hiện là 5 giây), không hard-code logic brand vào scheduler. Mỗi lần đổi slot, ảnh và URL lấy từ cùng một brand object nên không có trạng thái ảnh A nhưng link B.
+## Step 6
+GitHub đã trở thành control plane thật cho config. Website WordPress lấy `config/banners.json` từ GitHub, validate trước khi dùng, cache theo `github_sync_interval_seconds`, lưu last-known-good và fallback về bundled snapshot nếu GitHub lỗi.
+
+Remote config có thể thêm brand mới sau 14 brand ban đầu mà không cần rebuild plugin; layout V9 vẫn bị khóa cứng.
 
 ## Rule link
 Mỗi brand chỉ có một field `url`. Đổi URL một brand ở `config/banners.json` sẽ áp dụng cho mọi creative/slot của brand đó.

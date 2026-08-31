@@ -27,13 +27,15 @@ if root_cfg != plugin_cfg:
 if plugin_cfg.get("layout", {}).get("baseline") != "V9_LOCKED":
     raise SystemExit("ERROR: plugin snapshot baseline is not V9_LOCKED")
 if len(plugin_cfg.get("brands", [])) != 14:
-    raise SystemExit("ERROR: plugin snapshot must contain 14 brands")
+    raise SystemExit("ERROR: bundled plugin snapshot must currently contain 14 brands")
 
 system = plugin_cfg.get("system", {})
 if system.get("rotation_mode") != "sequential":
-    raise SystemExit("ERROR: Step 5 requires sequential rotation mode")
+    raise SystemExit("ERROR: Step 6 must preserve sequential rotation mode")
 if system.get("rotation_interval_seconds") != 5:
-    raise SystemExit("ERROR: V9 rotation interval must currently be 5 seconds")
+    raise SystemExit("ERROR: current V9 rotation interval must be 5 seconds")
+if system.get("github_sync_interval_seconds") != 300:
+    raise SystemExit("ERROR: current GitHub sync interval must be 300 seconds")
 
 layout = plugin_cfg["layout"]
 expected_counts = {"top": 2, "left": 2, "right": 2, "middle": 5, "bottom": 2}
@@ -51,6 +53,8 @@ for slot in [
         raise SystemExit(f"ERROR: renderer missing slot marker {slot}")
 if "thmt-banner-rotation-core" not in renderer:
     raise SystemExit("ERROR: rotation core is not enqueued before frontend.js")
+if "'step'         => 6" not in renderer:
+    raise SystemExit("ERROR: renderer must expose Step 6")
 
 js = (plugin / "assets" / "js" / "frontend.js").read_text(encoding="utf-8")
 required_js = [
@@ -65,11 +69,38 @@ required_js = [
 ]
 for marker in required_js:
     if marker not in js:
-        raise SystemExit(f"ERROR: Step 5 frontend marker missing: {marker}")
+        raise SystemExit(f"ERROR: Step 5 rotation marker missing after Step 6: {marker}")
 
-all_php = "\n".join(p.read_text(encoding="utf-8") for p in plugin.rglob("*.php"))
-if "wp_remote_get(" in all_php or "wp_remote_request(" in all_php:
-    raise SystemExit("ERROR: Step 5 must not implement remote GitHub sync/cache")
+config_php = (plugin / "includes" / "class-thmt-banner-config.php").read_text(encoding="utf-8")
+required_sync_markers = [
+    "REMOTE_CONFIG_URL",
+    "wp_remote_get(",
+    "get_transient(",
+    "set_transient(",
+    "get_option(",
+    "update_option(",
+    "If-None-Match",
+    "If-Modified-Since",
+    "304 === $code",
+    "OPTION_LAST_GOOD",
+    "TRANSIENT_LOCK",
+    "github_sync_interval_seconds",
+    "validate_candidate",
+    "wp_schedule_event(",
+]
+for marker in required_sync_markers:
+    if marker not in config_php:
+        raise SystemExit(f"ERROR: Step 6 sync/cache marker missing: {marker}")
+
+main_php = (plugin / "thmt-banner-system.php").read_text(encoding="utf-8")
+for marker in [
+    "THMT_Banner_Config::register()",
+    "register_activation_hook",
+    "register_deactivation_hook",
+    "0.6.0",
+]:
+    if marker not in main_php:
+        raise SystemExit(f"ERROR: Step 6 bootstrap marker missing: {marker}")
 
 css = (plugin / "assets" / "css" / "frontend.css").read_text(encoding="utf-8")
 if "object-fit: contain" not in css:
@@ -77,4 +108,4 @@ if "object-fit: contain" not in css:
 if ".thmt-banner-side-rail" not in css:
     raise SystemExit("ERROR: side rail styling missing")
 
-print("PASS: Step 5 plugin + V9 layout + sequential scheduler + no Step6 leakage.")
+print("PASS: Step 6 GitHub sync/cache + last-known-good + V9 renderer/rotation contract.")
