@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+
+# Local/editor
+.vscode/
+.idea/
+
+# Build
+*.zip
+build/
+dist/
+
+# Secrets
+.env
+.env.*
