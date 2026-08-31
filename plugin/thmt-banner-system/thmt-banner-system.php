@@ -2,7 +2,7 @@
 /**
  * Plugin Name: THMT Banner System
  * Description: GitHub-driven banner system with no TOP zone, optimized H.264 media, adaptive performance and resilient cache.
- * Version: 0.7.1
+ * Version: 1.0.0
  * Author: THMT
  * Requires at least: 6.0
  * Requires PHP: 7.4
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'THMT_BANNER_SYSTEM_VERSION', '0.7.1' );
+define( 'THMT_BANNER_SYSTEM_VERSION', '1.0.0' );
 define( 'THMT_BANNER_SYSTEM_FILE', __FILE__ );
 define( 'THMT_BANNER_SYSTEM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'THMT_BANNER_SYSTEM_URL', plugin_dir_url( __FILE__ ) );
