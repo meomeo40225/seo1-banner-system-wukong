@@ -13,7 +13,7 @@ async function waitForGlobalMedia(page, expectedVideos) {
   await page.waitForFunction((count) => {
     const runtime = window.THMTBannerRuntime;
     const videos = Array.from(document.querySelectorAll(
-      '[data-slot^="TOP_"] video,[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
+      '[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
     ));
     return runtime && videos.length === count && videos.every((v) => v.currentSrc || v.querySelector('source'));
   }, expectedVideos, { timeout: 60000 });
@@ -27,7 +27,7 @@ async function waitForGlobalMedia(page, expectedVideos) {
 
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await waitForGlobalMedia(page, 8);
+    await waitForGlobalMedia(page, 6);
 
     const initial = await page.evaluate(() => ({
       version: window.THMTBannerRuntime.version,
@@ -37,20 +37,22 @@ async function waitForGlobalMedia(page, expectedVideos) {
       running: window.THMTBannerRuntime.isRunning(),
       slots: document.querySelectorAll('[data-slot]').length,
       globalVideos: document.querySelectorAll(
-        '[data-slot^="TOP_"] video,[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
+        '[data-slot^="LEFT_"] video,[data-slot^="RIGHT_"] video,[data-slot^="BOTTOM_"] video'
       ).length,
       gifFallbacks: document.querySelectorAll('.thmt-banner-gif-fallback').length,
       mediaKinds: Array.from(document.querySelectorAll('[data-slot]')).map((s) => s.dataset.media || '')
     }));
 
-    assert.strictEqual(initial.version, '0.7.0');
+    assert.strictEqual(initial.version, '0.7.1');
     assert.strictEqual(initial.profile, 'full');
     assert.strictEqual(initial.brandCount, 14);
     assert.strictEqual(initial.interval, 5000);
     assert.strictEqual(initial.running, true);
-    assert.strictEqual(initial.slots, 13);
-    assert.strictEqual(initial.globalVideos, 8);
+    assert.strictEqual(initial.slots, 11);
+    assert.strictEqual(initial.globalVideos, 6);
     assert.strictEqual(initial.gifFallbacks, 0);
+    assert.strictEqual(await page.locator('[data-slot^="TOP_"]').count(), 0, 'TOP slots must not exist');
+    assert.strictEqual(await page.locator('#thmt-banner-top').count(), 0, 'TOP container must not exist');
     assert(initial.mediaKinds.some((x) => x.startsWith('mp4')));
 
     const resources = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name));
@@ -98,12 +100,12 @@ async function waitForGlobalMedia(page, expectedVideos) {
     await page.waitForTimeout(100);
 
     const headerGeometry = await page.evaluate(() => {
-      const top = document.getElementById('thmt-banner-top').getBoundingClientRect();
+      const rail = document.querySelector('.thmt-banner-side-left').getBoundingClientRect();
       const header = document.getElementById('step7-fixed-header').getBoundingClientRect();
-      return { top: top.top, headerBottom: header.bottom, height: top.height };
+      return { railTop: rail.top, headerBottom: header.bottom, railHeight: rail.height };
     });
-    assert(headerGeometry.height > 20);
-    assert(headerGeometry.top >= headerGeometry.headerBottom + 6, 'TOP must sit below fixed header');
+    assert(headerGeometry.railHeight > 20);
+    assert(headerGeometry.railTop >= headerGeometry.headerBottom + 6, 'LEFT/RIGHT rails must start below fixed header');
     await page.evaluate(() => document.getElementById('step7-fixed-header')?.remove());
 
     await page.evaluate(() => {
@@ -142,14 +144,14 @@ async function waitForGlobalMedia(page, expectedVideos) {
 
     const beforeTick = await page.evaluate(() => ({
       tick: window.THMTBannerRuntime.getCurrentTick(),
-      brands: Array.from(document.querySelectorAll('[data-slot^="TOP_"],[data-slot^="BOTTOM_"]')).map((s) => s.dataset.brand)
+      brands: Array.from(document.querySelectorAll('[data-slot^="BOTTOM_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"]')).map((s) => s.dataset.brand)
     }));
     await page.waitForTimeout(5400);
 
     const afterTick = await page.evaluate(() => ({
       tick: window.THMTBannerRuntime.getCurrentTick(),
       running: window.THMTBannerRuntime.isRunning(),
-      brands: Array.from(document.querySelectorAll('[data-slot^="TOP_"],[data-slot^="BOTTOM_"]')).map((s) => s.dataset.brand),
+      brands: Array.from(document.querySelectorAll('[data-slot^="BOTTOM_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"]')).map((s) => s.dataset.brand),
       fallback: document.querySelectorAll('.thmt-banner-gif-fallback').length
     }));
     assert.notStrictEqual(afterTick.tick, beforeTick.tick);
@@ -161,7 +163,7 @@ async function waitForGlobalMedia(page, expectedVideos) {
     await mobile.setViewportSize({ width: 800, height: 900 });
     await mobile.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await mobile.waitForFunction(
-      () => window.THMTBannerRuntime && document.querySelectorAll('[data-slot^="TOP_"] video').length === 2,
+      () => window.THMTBannerRuntime && document.querySelectorAll('[data-slot^="BOTTOM_"] video').length === 2,
       null,
       { timeout: 60000 }
     );
@@ -181,7 +183,7 @@ async function waitForGlobalMedia(page, expectedVideos) {
       await page.screenshot({ path: screenshotPath, fullPage: true });
     }
 
-    console.log('PASS: v0.7 MP4 engine + scroll freeze + zero-layout scroll + lazy MIDDLE + mobile no-side-load + header offset.');
+    console.log('PASS: v0.7.1 no-TOP MP4 engine + scroll freeze + lazy MIDDLE + mobile no-side-load + rail header offset.');
   } finally {
     await browser.close();
   }
