@@ -54,7 +54,9 @@ for slot in [
 if "thmt-banner-rotation-core" not in renderer:
     raise SystemExit("ERROR: rotation core is not enqueued before frontend.js")
 if "'step'         => 6" not in renderer:
-    raise SystemExit("ERROR: renderer must expose Step 6")
+    raise SystemExit("ERROR: renderer must expose Step 6 config contract")
+if "render_slot( 'MIDDLE_' . ( $i + 1 ), null, 'middle' )" not in renderer:
+    raise SystemExit("ERROR: Step 7 performance patch must lazy-mount middle GIFs")
 
 js = (plugin / "assets" / "js" / "frontend.js").read_text(encoding="utf-8")
 required_js = [
@@ -66,10 +68,18 @@ required_js = [
     "rotation_interval_seconds",
     "link.href = item.url",
     "img.src = item.image",
+    "IntersectionObserver",
+    "requestLayout",
+    "fixedHeaderBottom",
+    "Keep the previous good banner",
+    "0.6.1",
 ]
 for marker in required_js:
     if marker not in js:
-        raise SystemExit(f"ERROR: Step 5 rotation marker missing after Step 6: {marker}")
+        raise SystemExit(f"ERROR: Step 7 performance marker missing: {marker}")
+
+if "window.addEventListener('scroll', fitSideRails" in js:
+    raise SystemExit("ERROR: scroll must be rAF-throttled via requestLayout")
 
 config_php = (plugin / "includes" / "class-thmt-banner-config.php").read_text(encoding="utf-8")
 required_sync_markers = [
@@ -97,15 +107,17 @@ for marker in [
     "THMT_Banner_Config::register()",
     "register_activation_hook",
     "register_deactivation_hook",
-    "0.6.0",
+    "0.6.1",
 ]:
     if marker not in main_php:
-        raise SystemExit(f"ERROR: Step 6 bootstrap marker missing: {marker}")
+        raise SystemExit(f"ERROR: bootstrap marker missing: {marker}")
 
 css = (plugin / "assets" / "css" / "frontend.css").read_text(encoding="utf-8")
 if "object-fit: contain" not in css:
     raise SystemExit("ERROR: V9 contain rule missing")
 if ".thmt-banner-side-rail" not in css:
     raise SystemExit("ERROR: side rail styling missing")
+if "backdrop-filter" in css:
+    raise SystemExit("ERROR: fixed/sticky backdrop blur reintroduces scroll jank")
 
-print("PASS: Step 6 GitHub sync/cache + last-known-good + V9 renderer/rotation contract.")
+print("PASS: Step 7 performance hotfix + Step 6 sync/cache + V9 renderer/rotation contract.")

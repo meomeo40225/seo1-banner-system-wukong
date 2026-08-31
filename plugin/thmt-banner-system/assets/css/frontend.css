@@ -72,11 +72,10 @@
   width: 100%;
   margin: 0 0 12px;
   padding: 6px;
-  background: rgba(255,255,255,.96);
+  background: #fff;
   border: 1px solid #e3e8ef;
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(15,23,42,.12);
-  backdrop-filter: blur(6px);
 }
 
 .thmt-banner-top-row.is-mounted {
@@ -93,6 +92,7 @@
   gap: var(--thmt-side-gap);
   width: var(--thmt-side-width);
   transform-origin: top left;
+  contain: layout paint;
 }
 
 .thmt-banner-side-right {
@@ -113,6 +113,8 @@
   background: #f8fafc;
   border: 1px solid #e5e9ef;
   border-radius: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 250px;
 }
 
 .thmt-banner-middle-grid {
@@ -138,11 +140,11 @@
   gap: 12px;
   margin: 0;
   padding: 6px;
-  background: rgba(255,255,255,.96);
+  background: #fff;
   border: 1px solid #e3e8ef;
   border-radius: 10px;
   box-shadow: 0 -8px 24px rgba(15,23,42,.12);
-  backdrop-filter: blur(6px);
+  contain: layout paint;
 }
 
 @media (max-width: 1200px) {
