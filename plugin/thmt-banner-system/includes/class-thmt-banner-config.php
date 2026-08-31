@@ -222,7 +222,7 @@ class THMT_Banner_Config {
 
     /**
      * Base URL for optimized MP4/WebP media.
-     * Optional system.media_base_url can point to a CDN/R2 origin later.
+     * Optional system.media_base_url can override the default Cloudflare Pages origin.
      *
      * @param array|null $config Active config.
      * @return string
@@ -233,7 +233,7 @@ class THMT_Banner_Config {
             $configured = trim( (string) ( $config['system']['media_base_url'] ?? '' ) );
         }
 
-        $candidate_media = 'https://raw.githubusercontent.com/meomeo40225/seo1-banner-system-wukong/main/';
+        $candidate_media = 'https://seo1-banner-system-wukong.pages.dev/';
         $default = $configured ? $configured : $candidate_media;
         return trailingslashit( apply_filters( 'thmt_banner_media_base_url', $default, $config ) );
     }
