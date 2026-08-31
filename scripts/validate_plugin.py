@@ -69,6 +69,7 @@ required_js = [
     "link.href = item.url",
     "img.src = item.image",
     "syncMiddleVisibility",
+    "syncMiddleVisibility: syncMiddleVisibility",
     "requestLayout",
     "fixedHeaderBottom",
     "Keep the previous good banner",
