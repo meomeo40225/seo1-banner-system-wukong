@@ -108,7 +108,7 @@ if (!url) {
       return window.THMTBannerRuntime.isMiddleActive() &&
         images.length === 5 &&
         images.every((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
-    }, { timeout: 60000 });
+    }, null, { timeout: 60000 });
 
     const middle = await page.evaluate(() => {
       const slots = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"]')).map((slot) => {
