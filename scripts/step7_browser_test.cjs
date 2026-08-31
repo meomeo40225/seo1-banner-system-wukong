@@ -29,7 +29,7 @@ if (!url) {
         slots.length === 13 &&
         globalImages.length === 8 &&
         Array.from(globalImages).every((img) => img.complete && img.naturalWidth > 0);
-    }, { timeout: 60000 });
+    }, null, { timeout: 60000 });
 
     const initial = await page.evaluate(() => ({
       brandCount: window.THMTBannerRuntime.getBrandCount(),
