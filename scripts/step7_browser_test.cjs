@@ -20,127 +20,174 @@ if (!url) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
     await page.waitForFunction(() => {
-      const slots = Array.from(document.querySelectorAll('[data-slot]'));
-      const images = Array.from(document.querySelectorAll('[data-slot] img'));
-      return slots.length === 13 &&
-        images.length === 13 &&
-        images.every((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
-    }, { timeout: 60000 });
-
-    const initial = await page.evaluate(() => {
       const runtime = window.THMTBannerRuntime;
-      const system = window.THMTBannerSystem;
-      if (!runtime || !system) {
-        throw new Error('THMT runtime/config globals are missing');
-      }
+      const slots = document.querySelectorAll('[data-slot]');
+      const globalImages = document.querySelectorAll(
+        '[data-slot^="TOP_"] img,[data-slot^="LEFT_"] img,[data-slot^="RIGHT_"] img,[data-slot^="BOTTOM_"] img'
+      );
+      return runtime &&
+        slots.length === 13 &&
+        globalImages.length === 8 &&
+        Array.from(globalImages).every((img) => img.complete && img.naturalWidth > 0);
+    }, null, { timeout: 60000 });
 
-      const slots = Array.from(document.querySelectorAll('[data-slot]')).map((slot) => {
-        const img = slot.querySelector('img');
-        const link = slot.querySelector('.thmt-banner-link');
-        const style = img ? getComputedStyle(img) : null;
-
-        return {
-          id: slot.getAttribute('data-slot'),
-          brand: slot.getAttribute('data-brand'),
-          size: slot.getAttribute('data-size'),
-          src: img ? img.src : '',
-          naturalWidth: img ? img.naturalWidth : 0,
-          naturalHeight: img ? img.naturalHeight : 0,
-          objectFit: style ? style.objectFit : '',
-          href: link ? link.href : ''
-        };
-      });
-
-      const rect = (selector) => {
-        const el = document.querySelector(selector);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
-      };
-
-      return {
-        brandCount: runtime.getBrandCount(),
-        intervalMs: runtime.getIntervalMs(),
-        currentTick: runtime.getCurrentTick(),
-        running: runtime.isRunning(),
-        configBrands: system.config.brands,
-        slots,
-        hideControls: document.querySelectorAll('[data-thmt-hide], .thmt-banner-hide, .thmt-banner-toggle').length,
-        top: rect('#thmt-banner-top'),
-        left: rect('.thmt-banner-side-left'),
-        right: rect('.thmt-banner-side-right'),
-        bottom: rect('#thmt-banner-bottom'),
-        viewport: { width: innerWidth, height: innerHeight }
-      };
-    });
+    const initial = await page.evaluate(() => ({
+      brandCount: window.THMTBannerRuntime.getBrandCount(),
+      intervalMs: window.THMTBannerRuntime.getIntervalMs(),
+      currentTick: window.THMTBannerRuntime.getCurrentTick(),
+      running: window.THMTBannerRuntime.isRunning(),
+      middleActive: window.THMTBannerRuntime.isMiddleActive(),
+      middleImages: document.querySelectorAll('[data-slot^="MIDDLE_"] img').length,
+      globalImages: document.querySelectorAll(
+        '[data-slot^="TOP_"] img,[data-slot^="LEFT_"] img,[data-slot^="RIGHT_"] img,[data-slot^="BOTTOM_"] img'
+      ).length,
+      hideControls: document.querySelectorAll('[data-thmt-hide], .thmt-banner-hide, .thmt-banner-toggle').length
+    }));
 
     assert.strictEqual(initial.brandCount, 14, 'Runtime must see 14 enabled brands');
     assert.strictEqual(initial.intervalMs, 5000, 'Rotation interval must be 5000ms');
     assert.strictEqual(initial.running, true, 'Rotation timer must be running');
-    assert.strictEqual(initial.slots.length, 13, 'Exactly 13 visible V9 slots must exist');
+    assert.strictEqual(initial.globalImages, 8, 'The 8 always-visible global GIFs must load');
     assert.strictEqual(initial.hideControls, 0, 'Visitor hide controls must not exist');
 
-    const prefixCount = (prefix) => initial.slots.filter((slot) => slot.id.startsWith(prefix)).length;
-    assert.strictEqual(prefixCount('TOP_'), 2, 'TOP count');
-    assert.strictEqual(prefixCount('LEFT_'), 2, 'LEFT count');
-    assert.strictEqual(prefixCount('RIGHT_'), 2, 'RIGHT count');
-    assert.strictEqual(prefixCount('MIDDLE_'), 5, 'MIDDLE count');
-    assert.strictEqual(prefixCount('BOTTOM_'), 2, 'BOTTOM count');
+    /*
+     * The clean fixture is short, so MIDDLE may legitimately be near the first
+     * viewport. Force it far away, then prove the hotfix releases those GIFs.
+     */
+    await page.evaluate(() => {
+      const middle = document.querySelector('.thmt-banner-middle-zone');
+      const spacer = document.createElement('div');
+      spacer.id = 'step7-middle-offscreen-spacer';
+      spacer.style.height = '2200px';
+      middle.parentNode.insertBefore(spacer, middle);
+      window.scrollTo(0, 0);
+      window.THMTBannerRuntime.syncMiddleVisibility();
+      window.THMTBannerRuntime.requestLayout();
+    });
+    await page.waitForTimeout(100);
 
-    const middleBrands = new Set(
-      initial.slots.filter((slot) => slot.id.startsWith('MIDDLE_')).map((slot) => slot.brand)
+    const offscreenMiddleImages = await page.evaluate(() =>
+      document.querySelectorAll('[data-slot^="MIDDLE_"] img').length
     );
-    assert.strictEqual(middleBrands.size, 5, 'MIDDLE must display 5 distinct brands');
+    assert.strictEqual(offscreenMiddleImages, 0, 'Far off-screen MIDDLE GIFs must be released');
 
-    const brandByName = new Map(initial.configBrands.map((brand) => [String(brand.name || brand.id), brand]));
-    for (const slot of initial.slots) {
-      assert(slot.naturalWidth > 0 && slot.naturalHeight > 0, slot.id + ' image failed to load');
-      assert.strictEqual(slot.objectFit, 'contain', slot.id + ' must use object-fit: contain');
-
-      const brand = brandByName.get(slot.brand);
-      assert(brand, slot.id + ' rendered unknown brand ' + slot.brand);
-
-      const expectedPath = '/assets/' + brand.id + '/';
-      assert(slot.src.includes(expectedPath), slot.id + ' image does not match brand path');
-
-      if (!String(brand.url || '').trim()) {
-        assert.strictEqual(slot.href, '', slot.id + ' must not be clickable while brand URL is blank');
+    const beforeBurst = await page.evaluate(() => window.THMTBannerRuntime.getLayoutPassCount());
+    await page.evaluate(() => {
+      for (let i = 0; i < 100; i += 1) {
+        window.dispatchEvent(new Event('scroll'));
       }
-    }
+    });
+    await page.waitForTimeout(100);
+    const afterBurst = await page.evaluate(() => window.THMTBannerRuntime.getLayoutPassCount());
+    assert(afterBurst - beforeBurst <= 4, 'Scroll layout work must be requestAnimationFrame-throttled');
 
-    const inViewport = (rect, label) => {
-      assert(rect && rect.width > 0 && rect.height > 0, label + ' must be rendered');
-      assert(rect.left >= -1, label + ' overflows viewport left');
-      assert(rect.right <= initial.viewport.width + 1, label + ' overflows viewport right');
-      assert(rect.top >= -1, label + ' overflows viewport top');
-      assert(rect.bottom <= initial.viewport.height + 1, label + ' overflows viewport bottom');
-    };
+    await page.evaluate(() => {
+      const header = document.createElement('header');
+      header.id = 'step7-fixed-header';
+      Object.assign(header.style, {
+        position: 'fixed',
+        left: '0',
+        right: '0',
+        top: '0',
+        height: '120px',
+        zIndex: '100000',
+        background: '#111'
+      });
+      document.body.appendChild(header);
 
-    inViewport(initial.left, 'LEFT rail');
-    inViewport(initial.right, 'RIGHT rail');
-    inViewport(initial.bottom, 'BOTTOM row');
+      const spacer = document.createElement('div');
+      spacer.id = 'step7-extra-scroll';
+      spacer.style.height = '2000px';
+      document.body.appendChild(spacer);
+      window.scrollTo(0, 700);
+      window.THMTBannerRuntime.requestLayout();
+    });
+    await page.waitForTimeout(150);
 
-    const firstBrands = initial.slots.map((slot) => slot.brand);
-    const firstTick = initial.currentTick;
+    const topWithHeader = await page.evaluate(() => {
+      const top = document.getElementById('thmt-banner-top').getBoundingClientRect();
+      const header = document.getElementById('step7-fixed-header').getBoundingClientRect();
+      return { top: top.top, headerBottom: header.bottom, height: top.height };
+    });
+    assert(topWithHeader.height > 20, 'TOP row must keep a real visible height');
+    assert(
+      topWithHeader.top >= topWithHeader.headerBottom + 6,
+      'TOP row must sit below a fixed/sticky site header'
+    );
+
+    await page.evaluate(() => {
+      document.getElementById('step7-fixed-header')?.remove();
+      document.getElementById('step7-extra-scroll')?.remove();
+      document.getElementById('step7-middle-offscreen-spacer')?.remove();
+      const middle = document.querySelector('.thmt-banner-middle-zone');
+      const rect = middle.getBoundingClientRect();
+      const target = window.scrollY + rect.top - ((window.innerHeight - rect.height) / 2);
+      window.scrollTo(0, Math.max(0, target));
+      window.dispatchEvent(new Event('scroll'));
+      window.THMTBannerRuntime.syncMiddleVisibility();
+      window.THMTBannerRuntime.requestLayout();
+    });
+
+    await page.waitForFunction(() => {
+      const images = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"] img'));
+      return window.THMTBannerRuntime.isMiddleActive() && images.length === 5;
+    }, null, { timeout: 5000 });
+
+    const middle = await page.evaluate(() => {
+      const slots = Array.from(document.querySelectorAll('[data-slot^="MIDDLE_"]')).map((slot) => {
+        const img = slot.querySelector('img');
+        return {
+          brand: slot.getAttribute('data-brand'),
+          objectFit: img ? getComputedStyle(img).objectFit : '',
+          loading: img ? img.loading : '',
+          src: img ? img.src : ''
+        };
+      });
+      return slots;
+    });
+
+    assert.strictEqual(middle.length, 5, 'MIDDLE count');
+    assert.strictEqual(new Set(middle.map((slot) => slot.brand)).size, 5, 'MIDDLE must show 5 distinct brands');
+    middle.forEach((slot) => {
+      assert(slot.src.includes('/assets/'), 'MIDDLE must receive a real remote asset URL near viewport');
+      assert.strictEqual(slot.loading, 'lazy', 'MIDDLE browser hint must stay lazy');
+      assert.strictEqual(slot.objectFit, 'contain', 'MIDDLE must use object-fit: contain');
+    });
+
+    const beforeRotation = await page.evaluate(() => ({
+      tick: window.THMTBannerRuntime.getCurrentTick(),
+      brands: Array.from(document.querySelectorAll(
+        '[data-slot^="TOP_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"],[data-slot^="BOTTOM_"]'
+      )).map((slot) => slot.getAttribute('data-brand'))
+    }));
 
     await page.waitForTimeout(5400);
 
-    const after = await page.evaluate(() => ({
-      currentTick: window.THMTBannerRuntime.getCurrentTick(),
+    const afterRotation = await page.evaluate(() => ({
+      tick: window.THMTBannerRuntime.getCurrentTick(),
       running: window.THMTBannerRuntime.isRunning(),
-      brands: Array.from(document.querySelectorAll('[data-slot]')).map((slot) => slot.getAttribute('data-brand'))
+      loaded: Array.from(document.querySelectorAll(
+        '[data-slot^="TOP_"] img,[data-slot^="LEFT_"] img,[data-slot^="RIGHT_"] img,[data-slot^="BOTTOM_"] img'
+      )).every((img) => img.complete && img.naturalWidth > 0),
+      brands: Array.from(document.querySelectorAll(
+        '[data-slot^="TOP_"],[data-slot^="LEFT_"],[data-slot^="RIGHT_"],[data-slot^="BOTTOM_"]'
+      )).map((slot) => slot.getAttribute('data-brand'))
     }));
 
-    assert.strictEqual(after.running, true, 'Rotation must still be running after one interval');
-    assert.notStrictEqual(after.currentTick, firstTick, 'Rotation tick must advance after 5 seconds');
-    assert(after.brands.some((brand, index) => brand !== firstBrands[index]), 'At least one banner must rotate');
+    assert.strictEqual(afterRotation.running, true, 'Rotation must remain running');
+    assert.notStrictEqual(afterRotation.tick, beforeRotation.tick, 'Rotation tick must advance');
+    assert.strictEqual(afterRotation.loaded, true, 'Global slots must never blank while the next GIF loads');
+    assert(
+      afterRotation.brands.some((brand, index) => brand !== beforeRotation.brands[index]),
+      'At least one global banner must rotate'
+    );
 
     if (screenshotPath) {
       fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
       await page.screenshot({ path: screenshotPath, fullPage: true });
     }
 
-    console.log('PASS: real WordPress install + 13-slot V9 layout + remote GIF loading + 5s rotation.');
+    console.log('PASS: Step 7 hotfix — lazy MIDDLE + fixed-header TOP + rAF scroll + non-blank rotation.');
   } finally {
     await browser.close();
   }

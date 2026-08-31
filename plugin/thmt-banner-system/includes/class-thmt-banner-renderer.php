@@ -40,7 +40,7 @@ class THMT_Banner_Renderer {
     }
 
     /**
-     * Enqueue CSS/JS and expose the immutable Step 4 config contract.
+     * Enqueue CSS/JS and expose the remotely cached config contract.
      */
     public function enqueue_assets() {
         if ( is_admin() ) {
@@ -85,7 +85,7 @@ class THMT_Banner_Renderer {
     }
 
     /**
-     * Render TOP / LEFT / RIGHT / BOTTOM placeholders with initial V9 state.
+     * Render TOP / LEFT / RIGHT / BOTTOM with initial V9 state.
      * TOP is moved into the detected main content container by frontend.js.
      */
     public function render_global_shell() {
@@ -120,6 +120,10 @@ class THMT_Banner_Renderer {
     /**
      * Inject the 5-card MIDDLE zone into singular content.
      *
+     * Middle images intentionally start as placeholders. frontend.js only
+     * attaches GIFs when the zone approaches the viewport, preventing large
+     * off-screen GIFs from decoding during the initial page load.
+     *
      * @param string $content Post content.
      * @return string
      */
@@ -150,7 +154,7 @@ class THMT_Banner_Renderer {
         $html .= '<div class="thmt-banner-middle-grid">';
 
         for ( $i = 0; $i < 5; $i++ ) {
-            $html .= $this->render_slot( 'MIDDLE_' . ( $i + 1 ), $this->banner_for( $i, 'middle' ), 'middle' );
+            $html .= $this->render_slot( 'MIDDLE_' . ( $i + 1 ), null, 'middle' );
         }
 
         $html .= '</div></section>';
