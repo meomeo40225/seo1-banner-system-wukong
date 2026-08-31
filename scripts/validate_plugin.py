@@ -35,7 +35,7 @@ if root_cfg.get("system", {}).get("github_sync_interval_seconds") != 300:
     raise SystemExit("ERROR: sync interval drift")
 
 main_php = (PLUGIN / "thmt-banner-system.php").read_text(encoding="utf-8")
-for marker in ["0.7.0", "THMT_Banner_Config::register()", "register_activation_hook", "register_deactivation_hook"]:
+for marker in ["0.7.1", "THMT_Banner_Config::register()", "register_activation_hook", "register_deactivation_hook"]:
     if marker not in main_php:
         raise SystemExit(f"ERROR: bootstrap marker missing: {marker}")
 
@@ -62,9 +62,11 @@ if "wp_remote_get(" in config_php[get_start:get_end] or "refresh_remote(" in con
     raise SystemExit("ERROR: frontend get() must not block on remote HTTP")
 
 renderer = (PLUGIN / "includes" / "class-thmt-banner-renderer.php").read_text(encoding="utf-8")
-for slot in ["TOP_1", "TOP_2", "LEFT_1", "LEFT_2", "RIGHT_1", "RIGHT_2", "BOTTOM_1", "BOTTOM_2", "MIDDLE_"]:
+for slot in ["LEFT_1", "LEFT_2", "RIGHT_1", "RIGHT_2", "BOTTOM_1", "BOTTOM_2", "MIDDLE_"]:
     if slot not in renderer:
         raise SystemExit(f"ERROR: renderer missing {slot}")
+if "TOP_1" in renderer or "TOP_2" in renderer or "thmt-banner-top" in renderer:
+    raise SystemExit("ERROR: v0.7.1 must not render TOP slots")
 if "data-kind" not in renderer:
     raise SystemExit("ERROR: renderer must emit media-free slot geometry")
 if "<img" in renderer or "<video" in renderer:
@@ -86,10 +88,13 @@ for marker in [
     "resumeVideos",
     "desktopMql",
     "gif-fallback",
-    "0.7.0",
+    "0.7.1",
 ]:
     if marker not in js:
         raise SystemExit(f"ERROR: performance engine marker missing: {marker}")
+
+if "renderSlot('TOP_1'" in js or "renderSlot('TOP_2'" in js:
+    raise SystemExit("ERROR: v0.7.1 JS must not render TOP media")
 
 if "window.addEventListener('scroll', scheduleGeometry" in js or "window.addEventListener('scroll', recomputeGeometry" in js:
     raise SystemExit("ERROR: scroll path must not perform geometry calculation")
@@ -102,4 +107,4 @@ if "backdrop-filter" in css:
 if "@media (max-width: 1200px)" not in css:
     raise SystemExit("ERROR: mobile side rail policy missing")
 
-print("PASS: v0.7 performance engine contract + V9 layout + SWR config.")
+print("PASS: v0.7.1 no-TOP performance engine + LEFT/RIGHT/MIDDLE/BOTTOM + SWR config.")
